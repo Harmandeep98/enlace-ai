@@ -97,6 +97,39 @@ enum MembershipStatus {
   Removed
 }
 
+enum ChannelType {
+  Widget
+}
+
+enum ConversationStatus {
+  Open
+  AIHandling
+  Escalated
+  Resolved
+}
+
+enum EscalationReason {
+  LowConfidence
+  CustomerRequest
+  ToolFailure
+  PolicyTrigger
+}
+
+enum MessageSender {
+  Customer
+  AI
+  Human
+}
+
+enum ResolutionPath {
+  FaqCache
+  SemanticCache
+  Retrieval
+  ToolCall
+  SmallModel
+  LargeModel
+}
+
 model Workspace {
   id               String          @id @default(uuid())
   name             String
@@ -107,7 +140,9 @@ model Workspace {
   deletedAt        DateTime?
   createdAt        DateTime        @default(now())
   updatedAt        DateTime        @updatedAt
-  memberships      Membership[]
+  memberships        Membership[]
+  channelConnections ChannelConnection[]
+  conversations      Conversation[]
 
   @@map("workspaces")
 }
@@ -125,4 +160,49 @@ model Membership {
 
   @@unique([workspaceId, userId])
   @@map("memberships")
+}
+
+// --- Channels & Conversations domain (docs/05-domain-model.md §4-5, docs/06-database-design.md §2) ---
+
+model ChannelConnection {
+  id            String         @id @default(uuid())
+  workspaceId   String
+  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  type          ChannelType
+  createdAt     DateTime       @default(now())
+  conversations Conversation[]
+
+  @@index([workspaceId])
+  @@map("channel_connections")
+}
+
+model Conversation {
+  id               String             @id @default(uuid())
+  workspaceId      String
+  workspace        Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  channelId        String
+  channel          ChannelConnection  @relation(fields: [channelId], references: [id])
+  customerRef      String
+  status           ConversationStatus @default(Open)
+  escalationReason EscalationReason?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  messages         Message[]
+
+  @@index([workspaceId])
+  @@map("conversations")
+}
+
+model Message {
+  id             String          @id @default(uuid())
+  conversationId String
+  conversation   Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  workspaceId    String
+  sender         MessageSender
+  content        String
+  resolutionPath ResolutionPath?
+  createdAt      DateTime        @default(now())
+
+  @@index([workspaceId])
+  @@map("messages")
 }

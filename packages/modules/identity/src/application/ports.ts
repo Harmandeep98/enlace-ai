@@ -36,3 +36,11 @@ export interface AuthSignUpResult {
 export interface AuthPort {
   signUp(input: AuthSignUpInput): Promise<AuthSignUpResult>;
 }
+
+// Identity only needs "a channel got created" — it does not need Channels' own
+// ChannelConnection type, so this port is intentionally minimal and Identity has
+// no dependency on @enlace/channels. The composition root (apps/api) is the only
+// place that knows PrismaChannelRepository satisfies this port structurally.
+export interface ChannelProvisioningPort {
+  createDefaultWidget(workspaceId: string): Promise<{ id: string }>;
+}

@@ -1,5 +1,5 @@
 {
-  "name": "@enlace/identity",
+  "name": "@enlace/channels",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,10 +11,7 @@
     "lint": "eslint src",
     "test": "dotenv -e ../../../.env -- vitest run"
   },
-  "dependencies": {
-    "@enlace/shared": "workspace:*",
-    "better-auth": "^1.1.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@enlace/config": "workspace:*",
     "@enlace/db": "workspace:*",

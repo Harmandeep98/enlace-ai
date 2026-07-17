@@ -1,5 +1,5 @@
 {
-  "name": "@enlace/identity",
+  "name": "@enlace/conversations",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,8 +12,7 @@
     "test": "dotenv -e ../../../.env -- vitest run"
   },
   "dependencies": {
-    "@enlace/shared": "workspace:*",
-    "better-auth": "^1.1.0"
+    "@enlace/shared": "workspace:*"
   },
   "devDependencies": {
     "@enlace/config": "workspace:*",

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Hono } from "hono";
 import { identityRoutes } from "./routes/identity.js";
+import { conversationRoutes } from "./routes/conversations.js";
 import type { AppEnv } from "./types.js";
 
 export function buildApp() {
@@ -11,5 +12,6 @@ export function buildApp() {
   });
   app.get("/health", (c) => c.json({ ok: true }));
   app.route("/", identityRoutes);
+  app.route("/", conversationRoutes);
   return app;
 }

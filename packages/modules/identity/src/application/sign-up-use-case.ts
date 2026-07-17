@@ -1,6 +1,6 @@
 import { toWorkspaceSlug } from "../domain/workspace-slug.js";
 import type { Membership, Workspace } from "../domain/entities.js";
-import type { AuthPort, MembershipRepository, WorkspaceRepository } from "./ports.js";
+import type { AuthPort, ChannelProvisioningPort, MembershipRepository, WorkspaceRepository } from "./ports.js";
 
 export interface SignUpInput {
   email: string;
@@ -16,13 +16,14 @@ export interface SignUpResult {
 }
 
 // Known limitation: Better Auth's signUp writes outside this use case's own DB
-// transaction. If workspace/membership creation fails after the auth user is
+// transaction. If workspace/membership/channel creation fails after the auth user is
 // created, the result is an orphaned auth user with no workspace — accepted for v1.
 export class SignUpUseCase {
   constructor(
     private readonly workspaces: WorkspaceRepository,
     private readonly memberships: MembershipRepository,
-    private readonly auth: AuthPort
+    private readonly auth: AuthPort,
+    private readonly channels: ChannelProvisioningPort
   ) {}
 
   async execute(input: SignUpInput): Promise<SignUpResult> {
@@ -43,6 +44,8 @@ export class SignUpUseCase {
       userId,
       role: "Owner"
     });
+
+    await this.channels.createDefaultWidget(workspace.id);
 
     return { workspace, membership, userId };
   }

@@ -1,7 +1,9 @@
-// docs/05-domain-model.md §3, docs/20-coding-standards.md §3 (thrown typed errors, not a Result type)
-export abstract class DomainError extends Error {
-  abstract readonly code: string;
-}
+// docs/05-domain-model.md §3 — DomainError itself now lives in @enlace/shared (Task 1
+// of docs/superpowers/plans/2026-07-17-conversations-foundation.md), re-exported here
+// so existing imports of DomainError from @enlace/identity keep working.
+import { DomainError } from "@enlace/shared";
+
+export { DomainError };
 
 export class WorkspaceSlugTakenError extends DomainError {
   readonly code = "workspace_slug_taken";

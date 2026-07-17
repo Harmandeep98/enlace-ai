@@ -17,12 +17,21 @@ importers:
 
   apps/api:
     dependencies:
+      '@enlace/channels':
+        specifier: workspace:*
+        version: link:../../packages/modules/channels
+      '@enlace/conversations':
+        specifier: workspace:*
+        version: link:../../packages/modules/conversations
       '@enlace/db':
         specifier: workspace:*
         version: link:../../packages/db
       '@enlace/identity':
         specifier: workspace:*
         version: link:../../packages/modules/identity
+      '@enlace/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@hono/node-server':
         specifier: ^1.13.0
         version: 1.19.14(hono@4.12.30)
@@ -89,8 +98,57 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.20.1)
 
+  packages/modules/channels:
+    devDependencies:
+      '@enlace/config':
+        specifier: workspace:*
+        version: link:../../config
+      '@enlace/db':
+        specifier: workspace:*
+        version: link:../../db
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.20.1
+      dotenv-cli:
+        specifier: ^7.4.0
+        version: 7.4.4
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)
+
+  packages/modules/conversations:
+    dependencies:
+      '@enlace/shared':
+        specifier: workspace:*
+        version: link:../../shared
+    devDependencies:
+      '@enlace/config':
+        specifier: workspace:*
+        version: link:../../config
+      '@enlace/db':
+        specifier: workspace:*
+        version: link:../../db
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.20.1
+      dotenv-cli:
+        specifier: ^7.4.0
+        version: 7.4.4
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)
+
   packages/modules/identity:
     dependencies:
+      '@enlace/shared':
+        specifier: workspace:*
+        version: link:../../shared
       better-auth:
         specifier: ^1.1.0
         version: 1.6.23(@prisma/client@6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3))(prisma@6.19.3(typescript@5.9.3))(vitest@2.1.9(@types/node@22.20.1))
@@ -113,6 +171,15 @@ importers:
       vitest:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.20.1)
+
+  packages/shared:
+    devDependencies:
+      '@enlace/config':
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
 
 packages:
 
