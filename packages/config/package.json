@@ -1,0 +1,16 @@
+{
+  "name": "@enlace/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./eslint-preset.js",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./eslint-preset": "./eslint-preset.js",
+    "./vitest.base": "./vitest.base.js"
+  },
+  "dependencies": {
+    "typescript-eslint": "^8.18.0",
+    "eslint": "^9.17.0"
+  }
+}

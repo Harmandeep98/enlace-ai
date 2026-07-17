@@ -1,0 +1,28 @@
+{
+  "name": "@enlace/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "dotenv -e ../../.env -- tsx watch src/index.ts",
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "dotenv -e ../../.env -- vitest run"
+  },
+  "dependencies": {
+    "hono": "^4.6.0",
+    "@hono/node-server": "^1.13.0",
+    "zod": "^3.24.0",
+    "@enlace/db": "workspace:*",
+    "@enlace/identity": "workspace:*"
+  },
+  "devDependencies": {
+    "@enlace/config": "workspace:*",
+    "@types/node": "^22.10.0",
+    "dotenv-cli": "^7.4.0",
+    "tsx": "^4.19.0",
+    "vitest": "^2.1.8",
+    "typescript": "^5.7.0"
+  }
+}

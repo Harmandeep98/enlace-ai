@@ -1,0 +1,29 @@
+{
+  "name": "@enlace/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "dotenv -e ../../.env -- vitest run",
+    "db:migrate": "prisma migrate dev",
+    "db:generate": "prisma generate",
+    "db:check-rls": "dotenv -e ../../.env -- tsx scripts/check-rls-coverage.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.1.0"
+  },
+  "devDependencies": {
+    "@enlace/config": "workspace:*",
+    "@types/node": "^22.10.0",
+    "dotenv-cli": "^7.4.0",
+    "prisma": "^6.1.0",
+    "vitest": "^2.1.8",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

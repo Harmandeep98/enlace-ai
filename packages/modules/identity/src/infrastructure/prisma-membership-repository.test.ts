@@ -1,0 +1,28 @@
+import { randomUUID } from "node:crypto";
+import { afterEach, describe, expect, it } from "vitest";
+import { prisma } from "@enlace/db";
+import { PrismaMembershipRepository } from "./prisma-membership-repository.js";
+
+describe("PrismaMembershipRepository", () => {
+  const repo = new PrismaMembershipRepository();
+
+  afterEach(async () => {
+    await prisma.membership.deleteMany();
+    await prisma.workspace.deleteMany();
+    await prisma.user.deleteMany();
+  });
+
+  it("creates a membership scoped to a workspace, visible under that workspace's RLS session", async () => {
+    const user = await prisma.user.create({ data: { name: "Ada", email: `${randomUUID()}@example.com` } });
+    const workspace = await prisma.workspace.create({ data: { name: "Test Co", slug: `test-${randomUUID()}` } });
+
+    const membership = await repo.create({ workspaceId: workspace.id, userId: user.id, role: "Owner" });
+
+    expect(membership.role).toBe("Owner");
+    expect(membership.status).toBe("Active");
+
+    await prisma.$executeRawUnsafe(`SET app.workspace_id = '${workspace.id}'`);
+    const visible = await prisma.membership.findMany();
+    expect(visible.map((m) => m.id)).toEqual([membership.id]);
+  });
+});
