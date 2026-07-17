@@ -26,3 +26,12 @@ export interface ConversationRepository {
     escalationReason: EscalationReason | undefined
   ): Promise<Conversation>;
 }
+
+// Conversations only needs "does this message match a cached answer" — it does not need
+// Knowledge's own FaqEntry type, so this port is intentionally minimal and Conversations has
+// no dependency on @enlace/knowledge. The composition root is the only place that knows
+// PrismaFaqRepository satisfies this port structurally (same pattern as ChannelProvisioningPort
+// in @enlace/identity).
+export interface FaqCachePort {
+  findBestMatch(workspaceId: string, message: string): Promise<{ answer: string } | undefined>;
+}

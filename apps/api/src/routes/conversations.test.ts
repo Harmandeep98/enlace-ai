@@ -10,6 +10,7 @@ describe("Conversations routes", () => {
     await prisma.message.deleteMany();
     await prisma.conversation.deleteMany();
     await prisma.channelConnection.deleteMany();
+    await prisma.faqEntry.deleteMany();
     await prisma.workspace.deleteMany();
   });
 
@@ -22,6 +23,13 @@ describe("Conversations routes", () => {
       return tx.channelConnection.create({ data: { workspaceId: workspace.id, type: "Widget" } });
     });
     return { workspace, channel };
+  }
+
+  async function makeFaq(workspaceId: string, question: string, answer: string) {
+    return prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.workspace_id', ${workspaceId}, true)`;
+      return tx.faqEntry.create({ data: { workspaceId, question, answer } });
+    });
   }
 
   it("POST /v1/conversations starts a conversation with the first message", async () => {
@@ -37,6 +45,24 @@ describe("Conversations routes", () => {
     const body = await res.json();
     expect(body.conversation.status).toBe("Open");
     expect(body.message.content).toBe("Hi, I need help.");
+    expect(body.aiReply).toBeNull();
+  });
+
+  it("POST /v1/conversations returns an FAQ-matched aiReply when the first message matches", async () => {
+    const { workspace, channel } = await makeWorkspaceAndChannel();
+    await makeFaq(workspace.id, "What are your business hours", "We're open 9am-5pm Mon-Fri.");
+
+    const res = await app.request("/v1/conversations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "What are your business hours" })
+    });
+
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.aiReply.content).toBe("We're open 9am-5pm Mon-Fri.");
+    expect(body.aiReply.sender).toBe("AI");
+    expect(body.aiReply.resolutionPath).toBe("FaqCache");
   });
 
   it("POST /v1/conversations/:id/messages appends a message", async () => {
@@ -57,6 +83,28 @@ describe("Conversations routes", () => {
     expect(res.status).toBe(201);
     const body = await res.json();
     expect(body.message.content).toBe("How can I help?");
+  });
+
+  it("POST /v1/conversations/:id/messages returns an FAQ-matched aiReply for a matching customer follow-up", async () => {
+    const { workspace, channel } = await makeWorkspaceAndChannel();
+    await makeFaq(workspace.id, "How do I reset my password", "Use the 'Forgot password' link on the login page.");
+    const startRes = await app.request("/v1/conversations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi." })
+    });
+    const { conversation } = await startRes.json();
+
+    const res = await app.request(`/v1/conversations/${conversation.id}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workspaceId: workspace.id, sender: "Customer", content: "How do I reset my password" })
+    });
+
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.aiReply.content).toBe("Use the 'Forgot password' link on the login page.");
+    expect(body.aiReply.resolutionPath).toBe("FaqCache");
   });
 
   it("POST /v1/conversations/:id/escalate transitions status and rejects a missing reason", async () => {

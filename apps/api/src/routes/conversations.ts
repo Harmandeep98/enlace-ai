@@ -32,7 +32,7 @@ conversationRoutes.post("/v1/conversations", async (c) => {
   }
 
   try {
-    const result = await container.startConversationUseCase.execute(parsed.data);
+    const result = await container.incomingMessageUseCase.startConversation(parsed.data);
     return c.json(result, 201);
   } catch (error) {
     return mapDomainErrorToResponse(error, c);
@@ -46,6 +46,12 @@ conversationRoutes.post("/v1/conversations/:id/messages", async (c) => {
   }
 
   try {
+    // Only customer-authored messages get FAQ-checked (docs/superpowers/specs/2026-07-17-faq-cache-design.md
+    // §5) — an agent's or the AI's own reply doesn't need its own message checked against the cache.
+    if (parsed.data.sender === "Customer") {
+      const result = await container.incomingMessageUseCase.addMessage({ conversationId: c.req.param("id"), ...parsed.data });
+      return c.json(result, 201);
+    }
     const message = await container.addMessageUseCase.execute({ conversationId: c.req.param("id"), ...parsed.data });
     return c.json({ message }, 201);
   } catch (error) {

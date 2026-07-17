@@ -17,6 +17,7 @@
     "@enlace/channels": "workspace:*",
     "@enlace/conversations": "workspace:*",
     "@enlace/db": "workspace:*",
+    "@enlace/knowledge": "workspace:*",
     "@enlace/identity": "workspace:*",
     "@enlace/shared": "workspace:*"
   },
