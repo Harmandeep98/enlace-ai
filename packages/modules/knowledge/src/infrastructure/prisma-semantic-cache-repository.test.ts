@@ -20,6 +20,9 @@ class FakeEmbeddingPort implements EmbeddingPort {
   async embed(text: string): Promise<number[]> {
     return this.vectors.get(text) ?? fillVector(0);
   }
+  async embedBatch(texts: string[]): Promise<number[][]> {
+    return Promise.all(texts.map((text) => this.embed(text)));
+  }
 }
 
 describe("PrismaSemanticCacheRepository", () => {

@@ -18,6 +18,7 @@ export type {
   CreateKnowledgeSourceInput,
   DocumentChunkInput,
   DocumentChunkRepository,
+  IngestionTriggerPort,
   KnowledgeSourceRepository
 } from "./application/ports.js";
 export { CreateKnowledgeSourceUseCase } from "./application/create-knowledge-source-use-case.js";
@@ -26,3 +27,4 @@ export type { ListKnowledgeSourcesInput } from "./application/list-knowledge-sou
 
 export { PrismaKnowledgeSourceRepository } from "./infrastructure/prisma-knowledge-source-repository.js";
 export { PrismaDocumentChunkRepository } from "./infrastructure/prisma-document-chunk-repository.js";
+export { TemporalIngestionTrigger } from "./infrastructure/temporal-ingestion-trigger.js";

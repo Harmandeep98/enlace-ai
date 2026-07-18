@@ -9,7 +9,8 @@ import {
   ListKnowledgeSourcesUseCase,
   PrismaFaqRepository,
   PrismaKnowledgeSourceRepository,
-  PrismaSemanticCacheRepository
+  PrismaSemanticCacheRepository,
+  TemporalIngestionTrigger
 } from "@enlace/knowledge";
 import {
   AddMessageUseCase,
@@ -28,6 +29,7 @@ function buildContainer() {
   const conversationRepository = new PrismaConversationRepository();
   const faqRepository = new PrismaFaqRepository();
   const knowledgeSourceRepository = new PrismaKnowledgeSourceRepository();
+  const ingestionTrigger = new TemporalIngestionTrigger();
   const embeddingAdapter = new GeminiEmbeddingAdapter();
   const semanticCacheRepository = new PrismaSemanticCacheRepository(embeddingAdapter);
 
@@ -42,7 +44,7 @@ function buildContainer() {
     getConversationUseCase: new GetConversationUseCase(conversationRepository),
     createFaqUseCase: new CreateFaqUseCase(faqRepository),
     listFaqsUseCase: new ListFaqsUseCase(faqRepository),
-    createKnowledgeSourceUseCase: new CreateKnowledgeSourceUseCase(knowledgeSourceRepository),
+    createKnowledgeSourceUseCase: new CreateKnowledgeSourceUseCase(knowledgeSourceRepository, ingestionTrigger),
     listKnowledgeSourcesUseCase: new ListKnowledgeSourcesUseCase(knowledgeSourceRepository),
     incomingMessageUseCase: new IncomingMessageUseCase(
       startConversationUseCase,

@@ -14,6 +14,7 @@ export interface FaqRepository {
 
 export interface EmbeddingPort {
   embed(text: string): Promise<number[]>;
+  embedBatch(texts: string[]): Promise<number[][]>;
 }
 
 export interface SemanticCacheRepository {
@@ -47,4 +48,11 @@ export interface DocumentChunkInput {
 
 export interface DocumentChunkRepository {
   insertMany(workspaceId: string, sourceId: string, chunks: DocumentChunkInput[]): Promise<void>;
+}
+
+// Consumer-defined structural port (same pattern as FaqCachePort/SemanticCachePort in
+// Conversations) — CreateKnowledgeSourceUseCase depends on this, not on @enlace/temporal
+// directly, keeping the application layer free of infrastructure imports.
+export interface IngestionTriggerPort {
+  startWebsiteSync(sourceId: string, workspaceId: string, origin: string): Promise<void>;
 }

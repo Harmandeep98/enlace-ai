@@ -42,4 +42,19 @@ describe("Knowledge source routes", () => {
     expect(body.sources).toHaveLength(1);
     expect(body.sources[0].origin).toBe("https://example.com");
   });
+
+  it("POST /v1/knowledge-sources for a Website starts the sync workflow (queues without error)", async () => {
+    const workspace = await prisma.workspace.create({ data: { name: "Test Co", slug: `test-${randomUUID()}` } });
+
+    const res = await app.request("/v1/knowledge-sources", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workspaceId: workspace.id, type: "Website", origin: "https://example.com" })
+    });
+
+    // No worker is running during this test, so the workflow just sits queued in Temporal —
+    // this asserts the route successfully reaches Temporal (201, not a 500 from a failed
+    // workflow.start call), not that a crawl actually completes.
+    expect(res.status).toBe(201);
+  });
 });
