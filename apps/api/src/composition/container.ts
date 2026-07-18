@@ -2,7 +2,15 @@
 import { BetterAuthAdapter, PrismaMembershipRepository, PrismaWorkspaceRepository, SignUpUseCase } from "@enlace/identity";
 import { PrismaChannelRepository } from "@enlace/channels";
 import { GeminiEmbeddingAdapter } from "@enlace/ai-gateway";
-import { CreateFaqUseCase, ListFaqsUseCase, PrismaFaqRepository, PrismaSemanticCacheRepository } from "@enlace/knowledge";
+import {
+  CreateFaqUseCase,
+  CreateKnowledgeSourceUseCase,
+  ListFaqsUseCase,
+  ListKnowledgeSourcesUseCase,
+  PrismaFaqRepository,
+  PrismaKnowledgeSourceRepository,
+  PrismaSemanticCacheRepository
+} from "@enlace/knowledge";
 import {
   AddMessageUseCase,
   EscalateConversationUseCase,
@@ -19,6 +27,7 @@ function buildContainer() {
   const channelRepository = new PrismaChannelRepository();
   const conversationRepository = new PrismaConversationRepository();
   const faqRepository = new PrismaFaqRepository();
+  const knowledgeSourceRepository = new PrismaKnowledgeSourceRepository();
   const embeddingAdapter = new GeminiEmbeddingAdapter();
   const semanticCacheRepository = new PrismaSemanticCacheRepository(embeddingAdapter);
 
@@ -33,6 +42,8 @@ function buildContainer() {
     getConversationUseCase: new GetConversationUseCase(conversationRepository),
     createFaqUseCase: new CreateFaqUseCase(faqRepository),
     listFaqsUseCase: new ListFaqsUseCase(faqRepository),
+    createKnowledgeSourceUseCase: new CreateKnowledgeSourceUseCase(knowledgeSourceRepository),
+    listKnowledgeSourcesUseCase: new ListKnowledgeSourcesUseCase(knowledgeSourceRepository),
     incomingMessageUseCase: new IncomingMessageUseCase(
       startConversationUseCase,
       addMessageUseCase,

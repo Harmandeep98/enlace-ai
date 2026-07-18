@@ -15,3 +15,25 @@ export interface SemanticCacheEntry {
   question: string;
   answer: string;
 }
+
+export type KnowledgeSourceType = "Website" | "Pdf" | "Markdown" | "Txt" | "Faq";
+export type KnowledgeSyncStatus = "Pending" | "Processing" | "Ready" | "Failed";
+
+export interface KnowledgeSource {
+  id: string;
+  workspaceId: string;
+  type: KnowledgeSourceType;
+  origin: string;
+  syncStatus: KnowledgeSyncStatus;
+  lastSyncedAt: Date | null;
+}
+
+// No `embedding`/`contentHash` — infrastructure concerns, never surfaced above the repository
+// (same reasoning as SemanticCacheEntry).
+export interface DocumentChunk {
+  id: string;
+  workspaceId: string;
+  sourceId: string;
+  content: string;
+  tokenCount: number;
+}

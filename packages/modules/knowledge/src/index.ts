@@ -12,3 +12,17 @@ export { PrismaFaqRepository } from "./infrastructure/prisma-faq-repository.js";
 export type { SemanticCacheEntry } from "./domain/entities.js";
 export type { EmbeddingPort, SemanticCacheRepository } from "./application/ports.js";
 export { PrismaSemanticCacheRepository } from "./infrastructure/prisma-semantic-cache-repository.js";
+
+export type { DocumentChunk, KnowledgeSource, KnowledgeSourceType, KnowledgeSyncStatus } from "./domain/entities.js";
+export type {
+  CreateKnowledgeSourceInput,
+  DocumentChunkInput,
+  DocumentChunkRepository,
+  KnowledgeSourceRepository
+} from "./application/ports.js";
+export { CreateKnowledgeSourceUseCase } from "./application/create-knowledge-source-use-case.js";
+export { ListKnowledgeSourcesUseCase } from "./application/list-knowledge-sources-use-case.js";
+export type { ListKnowledgeSourcesInput } from "./application/list-knowledge-sources-use-case.js";
+
+export { PrismaKnowledgeSourceRepository } from "./infrastructure/prisma-knowledge-source-repository.js";
+export { PrismaDocumentChunkRepository } from "./infrastructure/prisma-document-chunk-repository.js";

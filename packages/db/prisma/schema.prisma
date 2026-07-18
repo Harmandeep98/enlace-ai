@@ -145,6 +145,8 @@ model Workspace {
   conversations      Conversation[]
   faqEntries         FaqEntry[]
   semanticCacheEntries SemanticCacheEntry[]
+  knowledgeSources     KnowledgeSource[]
+  documentChunks       DocumentChunk[]
 
   @@map("workspaces")
 }
@@ -233,4 +235,52 @@ model SemanticCacheEntry {
 
   @@index([workspaceId])
   @@map("semantic_cache_entries")
+}
+
+enum KnowledgeSourceType {
+  Website
+  Pdf
+  Markdown
+  Txt
+  Faq
+}
+
+enum KnowledgeSyncStatus {
+  Pending
+  Processing
+  Ready
+  Failed
+}
+
+model KnowledgeSource {
+  id           String              @id @default(uuid())
+  workspaceId  String
+  workspace    Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  type         KnowledgeSourceType
+  origin       String
+  syncStatus   KnowledgeSyncStatus @default(Pending)
+  lastSyncedAt DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+  chunks       DocumentChunk[]
+
+  @@index([workspaceId])
+  @@map("knowledge_sources")
+}
+
+model DocumentChunk {
+  id          String          @id @default(uuid())
+  workspaceId String
+  workspace   Workspace       @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceId    String
+  source      KnowledgeSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  content     String
+  embedding   Unsupported("vector(768)")
+  tokenCount  Int
+  contentHash String
+  createdAt   DateTime        @default(now())
+
+  @@index([workspaceId])
+  @@index([sourceId])
+  @@map("document_chunks")
 }

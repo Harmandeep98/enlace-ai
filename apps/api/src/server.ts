@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { identityRoutes } from "./routes/identity.js";
 import { conversationRoutes } from "./routes/conversations.js";
 import { faqRoutes } from "./routes/faqs.js";
+import { knowledgeSourceRoutes } from "./routes/knowledge-sources.js";
 import type { AppEnv } from "./types.js";
 
 export function buildApp() {
@@ -15,5 +16,6 @@ export function buildApp() {
   app.route("/", identityRoutes);
   app.route("/", conversationRoutes);
   app.route("/", faqRoutes);
+  app.route("/", knowledgeSourceRoutes);
   return app;
 }
