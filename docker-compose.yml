@@ -11,5 +11,18 @@ services:
       - enlace_pg_data:/var/lib/postgresql/data
       - ./packages/db/init:/docker-entrypoint-initdb.d
 
+  temporal:
+    image: temporalio/auto-setup:latest
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: enlace
+      POSTGRES_PWD: enlace_dev
+      POSTGRES_SEEDS: postgres
+    ports:
+      - "7233:7233"
+    depends_on:
+      - postgres
+
 volumes:
   enlace_pg_data:
