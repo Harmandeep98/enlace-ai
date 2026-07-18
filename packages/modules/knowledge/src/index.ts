@@ -8,3 +8,7 @@ export { ListFaqsUseCase } from "./application/list-faqs-use-case.js";
 export type { ListFaqsInput } from "./application/list-faqs-use-case.js";
 
 export { PrismaFaqRepository } from "./infrastructure/prisma-faq-repository.js";
+
+export type { SemanticCacheEntry } from "./domain/entities.js";
+export type { EmbeddingPort, SemanticCacheRepository } from "./application/ports.js";
+export { PrismaSemanticCacheRepository } from "./infrastructure/prisma-semantic-cache-repository.js";

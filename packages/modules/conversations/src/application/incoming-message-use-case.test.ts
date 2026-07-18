@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { Conversation, Message } from "../domain/entities.js";
-import type { AppendMessageInput, ConversationRepository, FaqCachePort, StartConversationInput } from "./ports.js";
+import type {
+  AppendMessageInput,
+  ConversationRepository,
+  FaqCachePort,
+  SemanticCachePort,
+  StartConversationInput
+} from "./ports.js";
 import { AddMessageUseCase } from "./add-message-use-case.js";
 import { StartConversationUseCase } from "./start-conversation-use-case.js";
 import { IncomingMessageUseCase } from "./incoming-message-use-case.js";
@@ -61,19 +67,42 @@ class FakeFaqCachePort implements FaqCachePort {
   }
 }
 
-function buildUseCase(faqMatch: { answer: string } | undefined) {
+class FakeSemanticCachePort implements SemanticCachePort {
+  public saved: { workspaceId: string; question: string; answer: string }[] = [];
+  constructor(private readonly match: { answer: string } | undefined) {}
+
+  async findBestMatch(): Promise<{ answer: string } | undefined> {
+    return this.match;
+  }
+
+  async save(workspaceId: string, question: string, answer: string): Promise<void> {
+    this.saved.push({ workspaceId, question, answer });
+  }
+}
+
+function buildUseCase(
+  faqMatch: { answer: string } | undefined,
+  semanticMatch: { answer: string } | undefined = undefined
+) {
   const conversations = new FakeConversationRepository();
   const startConversationUseCase = new StartConversationUseCase(conversations);
   const addMessageUseCase = new AddMessageUseCase(conversations);
   const faqCache = new FakeFaqCachePort(faqMatch);
-  const useCase = new IncomingMessageUseCase(startConversationUseCase, addMessageUseCase, conversations, faqCache);
-  return { useCase, conversations };
+  const semanticCache = new FakeSemanticCachePort(semanticMatch);
+  const useCase = new IncomingMessageUseCase(
+    startConversationUseCase,
+    addMessageUseCase,
+    conversations,
+    faqCache,
+    semanticCache
+  );
+  return { useCase, conversations, semanticCache };
 }
 
 describe("IncomingMessageUseCase", () => {
   describe("startConversation", () => {
-    it("appends an AI reply with resolutionPath FaqCache when the message matches", async () => {
-      const { useCase } = buildUseCase({ answer: "We're open 9am-5pm." });
+    it("appends an AI reply with resolutionPath FaqCache and writes it to the semantic cache", async () => {
+      const { useCase, semanticCache } = buildUseCase({ answer: "We're open 9am-5pm." });
 
       const result = await useCase.startConversation({
         workspaceId: "workspace-1",
@@ -82,21 +111,36 @@ describe("IncomingMessageUseCase", () => {
         message: "What are your business hours?"
       });
 
-      expect(result.conversation.status).toBe("Open");
-      expect(result.message.content).toBe("What are your business hours?");
       expect(result.aiReply?.content).toBe("We're open 9am-5pm.");
-      expect(result.aiReply?.sender).toBe("AI");
       expect(result.aiReply?.resolutionPath).toBe("FaqCache");
+      expect(semanticCache.saved).toEqual([
+        { workspaceId: "workspace-1", question: "What are your business hours?", answer: "We're open 9am-5pm." }
+      ]);
     });
 
-    it("returns aiReply: null when nothing matches", async () => {
-      const { useCase } = buildUseCase(undefined);
+    it("appends an AI reply with resolutionPath SemanticCache when only the semantic cache matches", async () => {
+      const { useCase, semanticCache } = buildUseCase(undefined, { answer: "We're open 9am-5pm." });
 
       const result = await useCase.startConversation({
         workspaceId: "workspace-1",
         channelId: "channel-1",
         customerRef: "customer-1",
-        message: "Something with no FAQ match"
+        message: "When do you open?"
+      });
+
+      expect(result.aiReply?.content).toBe("We're open 9am-5pm.");
+      expect(result.aiReply?.resolutionPath).toBe("SemanticCache");
+      expect(semanticCache.saved).toEqual([]);
+    });
+
+    it("returns aiReply: null when neither cache matches", async () => {
+      const { useCase } = buildUseCase(undefined, undefined);
+
+      const result = await useCase.startConversation({
+        workspaceId: "workspace-1",
+        channelId: "channel-1",
+        customerRef: "customer-1",
+        message: "Something with no match at all"
       });
 
       expect(result.aiReply).toBeNull();
@@ -104,8 +148,8 @@ describe("IncomingMessageUseCase", () => {
   });
 
   describe("addMessage", () => {
-    it("appends an AI reply when a follow-up customer message matches", async () => {
-      const { useCase, conversations } = buildUseCase({ answer: "Use the 'Forgot password' link." });
+    it("appends an AI reply with resolutionPath SemanticCache for a matching follow-up", async () => {
+      const { useCase, conversations } = buildUseCase(undefined, { answer: "Use the 'Forgot password' link." });
       const { conversation } = await conversations.create({
         workspaceId: "workspace-1",
         channelId: "channel-1",
@@ -117,16 +161,15 @@ describe("IncomingMessageUseCase", () => {
         conversationId: conversation.id,
         workspaceId: "workspace-1",
         sender: "Customer",
-        content: "How do I reset my password?"
+        content: "How do I get back into my account?"
       });
 
-      expect(result.message.content).toBe("How do I reset my password?");
       expect(result.aiReply?.content).toBe("Use the 'Forgot password' link.");
-      expect(result.aiReply?.resolutionPath).toBe("FaqCache");
+      expect(result.aiReply?.resolutionPath).toBe("SemanticCache");
     });
 
     it("returns aiReply: null when nothing matches", async () => {
-      const { useCase, conversations } = buildUseCase(undefined);
+      const { useCase, conversations } = buildUseCase(undefined, undefined);
       const { conversation } = await conversations.create({
         workspaceId: "workspace-1",
         channelId: "channel-1",

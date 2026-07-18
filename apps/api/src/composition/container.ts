@@ -1,7 +1,8 @@
 // docs/04-folder-structure.md §3 — the one place in apps/api allowed to import infrastructure directly.
 import { BetterAuthAdapter, PrismaMembershipRepository, PrismaWorkspaceRepository, SignUpUseCase } from "@enlace/identity";
 import { PrismaChannelRepository } from "@enlace/channels";
-import { CreateFaqUseCase, ListFaqsUseCase, PrismaFaqRepository } from "@enlace/knowledge";
+import { GeminiEmbeddingAdapter } from "@enlace/ai-gateway";
+import { CreateFaqUseCase, ListFaqsUseCase, PrismaFaqRepository, PrismaSemanticCacheRepository } from "@enlace/knowledge";
 import {
   AddMessageUseCase,
   EscalateConversationUseCase,
@@ -18,6 +19,8 @@ function buildContainer() {
   const channelRepository = new PrismaChannelRepository();
   const conversationRepository = new PrismaConversationRepository();
   const faqRepository = new PrismaFaqRepository();
+  const embeddingAdapter = new GeminiEmbeddingAdapter();
+  const semanticCacheRepository = new PrismaSemanticCacheRepository(embeddingAdapter);
 
   const startConversationUseCase = new StartConversationUseCase(conversationRepository);
   const addMessageUseCase = new AddMessageUseCase(conversationRepository);
@@ -34,7 +37,8 @@ function buildContainer() {
       startConversationUseCase,
       addMessageUseCase,
       conversationRepository,
-      faqRepository
+      faqRepository,
+      semanticCacheRepository
     )
   };
 }

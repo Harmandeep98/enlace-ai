@@ -35,3 +35,11 @@ export interface ConversationRepository {
 export interface FaqCachePort {
   findBestMatch(workspaceId: string, message: string): Promise<{ answer: string } | undefined>;
 }
+
+// Same consumer-defined structural-port pattern as FaqCachePort — Conversations has no
+// dependency on @enlace/knowledge; PrismaSemanticCacheRepository satisfies this structurally,
+// wired only at the composition root.
+export interface SemanticCachePort {
+  findBestMatch(workspaceId: string, message: string): Promise<{ answer: string } | undefined>;
+  save(workspaceId: string, question: string, answer: string): Promise<void>;
+}

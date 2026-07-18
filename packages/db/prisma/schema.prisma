@@ -144,6 +144,7 @@ model Workspace {
   channelConnections ChannelConnection[]
   conversations      Conversation[]
   faqEntries         FaqEntry[]
+  semanticCacheEntries SemanticCacheEntry[]
 
   @@map("workspaces")
 }
@@ -219,4 +220,17 @@ model FaqEntry {
 
   @@index([workspaceId])
   @@map("faq_entries")
+}
+
+model SemanticCacheEntry {
+  id          String   @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  question    String
+  answer      String
+  embedding   Unsupported("vector(768)")
+  createdAt   DateTime @default(now())
+
+  @@index([workspaceId])
+  @@map("semantic_cache_entries")
 }

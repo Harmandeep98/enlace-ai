@@ -11,3 +11,12 @@ export interface FaqRepository {
   listByWorkspace(workspaceId: string): Promise<FaqEntry[]>;
   findBestMatch(workspaceId: string, message: string): Promise<FaqEntry | undefined>;
 }
+
+export interface EmbeddingPort {
+  embed(text: string): Promise<number[]>;
+}
+
+export interface SemanticCacheRepository {
+  findBestMatch(workspaceId: string, message: string): Promise<{ answer: string } | undefined>;
+  save(workspaceId: string, question: string, answer: string): Promise<void>;
+}

@@ -11,7 +11,13 @@ export type {
 } from "./domain/entities.js";
 export { ConversationNotFoundError, ConversationNotOpenError, EscalationReasonRequiredError } from "./domain/errors.js";
 
-export type { AppendMessageInput, ConversationRepository, FaqCachePort, StartConversationInput } from "./application/ports.js";
+export type {
+  AppendMessageInput,
+  ConversationRepository,
+  FaqCachePort,
+  SemanticCachePort,
+  StartConversationInput
+} from "./application/ports.js";
 export { AddMessageUseCase } from "./application/add-message-use-case.js";
 export type { AddMessageInput } from "./application/add-message-use-case.js";
 export { EscalateConversationUseCase } from "./application/escalate-conversation-use-case.js";
