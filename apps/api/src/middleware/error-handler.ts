@@ -3,13 +3,23 @@ import type { Context } from "hono";
 import { DomainError } from "@enlace/shared";
 import { WorkspaceSlugTakenError } from "@enlace/identity";
 import { ConversationNotFoundError, ConversationNotOpenError, EscalationReasonRequiredError } from "@enlace/conversations";
+import {
+  CredentialRequiredError,
+  PlatformKeyModeRequiresGoogleError,
+  ProviderConfigNotFoundError,
+  ProviderKeyValidationFailedError
+} from "@enlace/ai-gateway";
 import type { AppEnv } from "../types.js";
 
 const errorStatusMap = new Map<new (...args: never[]) => DomainError, number>([
   [WorkspaceSlugTakenError, 409],
   [ConversationNotOpenError, 409],
   [EscalationReasonRequiredError, 400],
-  [ConversationNotFoundError, 404]
+  [ConversationNotFoundError, 404],
+  [PlatformKeyModeRequiresGoogleError, 400],
+  [CredentialRequiredError, 400],
+  [ProviderKeyValidationFailedError, 400],
+  [ProviderConfigNotFoundError, 404]
 ]);
 
 export function mapDomainErrorToResponse(error: unknown, c: Context<AppEnv>) {

@@ -11,9 +11,17 @@
     "lint": "eslint src",
     "test": "dotenv -e ../../../.env -- vitest run"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@enlace/shared": "workspace:*",
+    "@langchain/core": "^1.2.1",
+    "@langchain/google-genai": "^1.0.0",
+    "@langchain/openai": "^1.0.0",
+    "@langchain/anthropic": "^1.0.0",
+    "@langchain/ollama": "^1.0.0"
+  },
   "devDependencies": {
     "@enlace/config": "workspace:*",
+    "@enlace/db": "workspace:*",
     "@types/node": "^22.10.0",
     "dotenv-cli": "^7.4.0",
     "vitest": "^2.1.8",

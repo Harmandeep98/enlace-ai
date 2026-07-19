@@ -1,7 +1,15 @@
 // docs/04-folder-structure.md §3 — the one place in apps/api allowed to import infrastructure directly.
 import { BetterAuthAdapter, PrismaMembershipRepository, PrismaWorkspaceRepository, SignUpUseCase } from "@enlace/identity";
 import { PrismaChannelRepository } from "@enlace/channels";
-import { GeminiEmbeddingAdapter } from "@enlace/ai-gateway";
+import {
+  ConfigureProviderUseCase,
+  DisableProviderConfigUseCase,
+  GeminiEmbeddingAdapter,
+  LangChainProviderKeyValidator,
+  ListProviderConfigsUseCase,
+  PrismaProviderConfigRepository,
+  RotateProviderKeyUseCase
+} from "@enlace/ai-gateway";
 import {
   CreateFaqUseCase,
   CreateKnowledgeSourceUseCase,
@@ -32,6 +40,8 @@ function buildContainer() {
   const ingestionTrigger = new TemporalIngestionTrigger();
   const embeddingAdapter = new GeminiEmbeddingAdapter();
   const semanticCacheRepository = new PrismaSemanticCacheRepository(embeddingAdapter);
+  const providerConfigRepository = new PrismaProviderConfigRepository();
+  const providerKeyValidator = new LangChainProviderKeyValidator();
 
   const startConversationUseCase = new StartConversationUseCase(conversationRepository);
   const addMessageUseCase = new AddMessageUseCase(conversationRepository);
@@ -52,7 +62,11 @@ function buildContainer() {
       conversationRepository,
       faqRepository,
       semanticCacheRepository
-    )
+    ),
+    configureProviderUseCase: new ConfigureProviderUseCase(providerConfigRepository, providerKeyValidator),
+    rotateProviderKeyUseCase: new RotateProviderKeyUseCase(providerConfigRepository, providerKeyValidator),
+    disableProviderConfigUseCase: new DisableProviderConfigUseCase(providerConfigRepository),
+    listProviderConfigsUseCase: new ListProviderConfigsUseCase(providerConfigRepository)
   };
 }
 

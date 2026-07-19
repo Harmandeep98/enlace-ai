@@ -147,6 +147,7 @@ model Workspace {
   semanticCacheEntries SemanticCacheEntry[]
   knowledgeSources     KnowledgeSource[]
   documentChunks       DocumentChunk[]
+  providerConfigs      ProviderConfig[]
 
   @@map("workspaces")
 }
@@ -283,4 +284,38 @@ model DocumentChunk {
   @@index([workspaceId])
   @@index([sourceId])
   @@map("document_chunks")
+}
+
+enum Provider {
+  Google
+  OpenAI
+  Anthropic
+  OpenRouter
+  Ollama
+}
+
+enum KeyMode {
+  Platform
+  BringYourOwn
+}
+
+enum ProviderConfigStatus {
+  Active
+  Disabled
+}
+
+model ProviderConfig {
+  id              String               @id @default(uuid())
+  workspaceId     String
+  workspace       Workspace            @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  provider        Provider
+  keyMode         KeyMode
+  encryptedApiKey String?
+  status          ProviderConfigStatus @default(Active)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@unique([workspaceId, provider])
+  @@index([workspaceId])
+  @@map("provider_configs")
 }
