@@ -48,6 +48,7 @@ export interface DocumentChunkInput {
 
 export interface DocumentChunkRepository {
   insertMany(workspaceId: string, sourceId: string, chunks: DocumentChunkInput[]): Promise<void>;
+  findBestMatches(workspaceId: string, message: string, k: number): Promise<{ content: string }[]>;
 }
 
 // Consumer-defined structural port (same pattern as FaqCachePort/SemanticCachePort in

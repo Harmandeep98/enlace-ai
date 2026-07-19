@@ -1,12 +1,20 @@
 import { randomUUID } from "node:crypto";
 import { Prisma, prisma } from "@enlace/db";
-import type { DocumentChunkInput, DocumentChunkRepository } from "../application/ports.js";
+import type { DocumentChunkInput, DocumentChunkRepository, EmbeddingPort } from "../application/ports.js";
+
+// Placeholder, per spec §3 — looser than semantic cache's 0.65 deliberately: retrieval's job
+// is "here's relevant material," not "this exact question was asked before." Retune once real
+// conversation data exists.
+const SIMILARITY_THRESHOLD = 0.5;
+const DEFAULT_K = 3;
 
 function toVectorLiteral(embedding: number[]): string {
   return `[${embedding.join(",")}]`;
 }
 
 export class PrismaDocumentChunkRepository implements DocumentChunkRepository {
+  constructor(private readonly embeddings: EmbeddingPort) {}
+
   private withTenant<T>(workspaceId: string, fn: (tx: Prisma.TransactionClient) => Promise<T>): Promise<T> {
     return prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT set_config('app.workspace_id', ${workspaceId}, true)`;
@@ -28,5 +36,26 @@ export class PrismaDocumentChunkRepository implements DocumentChunkRepository {
         `;
       }
     });
+  }
+
+  // docs/12-knowledge-architecture.md §6 — a workspace's whole Ready chunk set is searched
+  // together, one similarity search, not per-source. Joined against knowledge_sources so a
+  // source still Processing/Failed never contributes chunks to the result.
+  async findBestMatches(workspaceId: string, message: string, k: number = DEFAULT_K): Promise<{ content: string }[]> {
+    const embedding = await this.embeddings.embed(message);
+    const vectorLiteral = toVectorLiteral(embedding);
+
+    const rows = await this.withTenant(workspaceId, (tx) =>
+      tx.$queryRaw<{ content: string; similarity: number }[]>`
+        SELECT dc.content, 1 - (dc.embedding <=> ${vectorLiteral}::vector) AS similarity
+        FROM document_chunks dc
+        JOIN knowledge_sources ks ON ks.id = dc."sourceId"
+        WHERE dc."workspaceId" = ${workspaceId} AND ks."syncStatus" = 'Ready'
+        ORDER BY dc.embedding <=> ${vectorLiteral}::vector
+        LIMIT ${k}
+      `
+    );
+
+    return rows.filter((row) => row.similarity >= SIMILARITY_THRESHOLD).map((row) => ({ content: row.content }));
   }
 }

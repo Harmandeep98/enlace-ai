@@ -25,8 +25,8 @@ const CHUNK_OVERLAP = 200;
 const CRAWLER_USER_AGENT = "EnlaceBot/1.0";
 
 const knowledgeSources = new PrismaKnowledgeSourceRepository();
-const documentChunks = new PrismaDocumentChunkRepository();
 const embeddingAdapter = new GeminiEmbeddingAdapter();
+const documentChunks = new PrismaDocumentChunkRepository(embeddingAdapter);
 
 export async function markSyncStatus(
   sourceId: string,

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "@enlace/db";
+import type { EmbeddingPort } from "../application/ports.js";
 import { PrismaKnowledgeSourceRepository } from "./prisma-knowledge-source-repository.js";
 import { PrismaDocumentChunkRepository } from "./prisma-document-chunk-repository.js";
 
@@ -8,9 +9,25 @@ function fillVector(value: number): number[] {
   return new Array(768).fill(value);
 }
 
+// Deterministic and orthogonal to fillVector(1) — dot product is 0 for a 768-length (even)
+// array, so cosine similarity between them is 0 (same technique already used for
+// PrismaSemanticCacheRepository's tests).
+function alternatingVector(): number[] {
+  return new Array(768).fill(0).map((_, i) => (i % 2 === 0 ? 1 : -1));
+}
+
+class FakeEmbeddingPort implements EmbeddingPort {
+  constructor(private readonly vectors: Map<string, number[]>) {}
+  async embed(text: string): Promise<number[]> {
+    return this.vectors.get(text) ?? fillVector(0);
+  }
+  async embedBatch(texts: string[]): Promise<number[][]> {
+    return Promise.all(texts.map((text) => this.embed(text)));
+  }
+}
+
 describe("PrismaDocumentChunkRepository", () => {
   const sources = new PrismaKnowledgeSourceRepository();
-  const chunks = new PrismaDocumentChunkRepository();
 
   async function makeWorkspaceAndSource() {
     const workspace = await prisma.workspace.create({ data: { name: "Test Co", slug: `test-${randomUUID()}` } });
@@ -26,6 +43,7 @@ describe("PrismaDocumentChunkRepository", () => {
 
   it("inserts chunks and they're readable back for the workspace", async () => {
     const { workspace, source } = await makeWorkspaceAndSource();
+    const chunks = new PrismaDocumentChunkRepository(new FakeEmbeddingPort(new Map()));
 
     await chunks.insertMany(workspace.id, source.id, [
       { content: "First chunk.", embedding: fillVector(1), tokenCount: 3, contentHash: "hash-1" },
@@ -45,6 +63,7 @@ describe("PrismaDocumentChunkRepository", () => {
   // docs/21-testing-strategy.md §5 — id-only query, so only RLS (not an app-level filter) can hide the row.
   it("RLS blocks reading another workspace's chunk even with an id-only query", async () => {
     const { workspace: workspaceA, source: sourceA } = await makeWorkspaceAndSource();
+    const chunks = new PrismaDocumentChunkRepository(new FakeEmbeddingPort(new Map()));
     await chunks.insertMany(workspaceA.id, sourceA.id, [
       { content: "A's chunk.", embedding: fillVector(1), tokenCount: 3, contentHash: "hash-a" }
     ]);
@@ -61,5 +80,64 @@ describe("PrismaDocumentChunkRepository", () => {
     });
 
     expect(rowsVisibleFromB).toHaveLength(0);
+  });
+
+  describe("findBestMatches", () => {
+    it("returns matching chunks from a Ready source", async () => {
+      const { workspace, source } = await makeWorkspaceAndSource();
+      await sources.updateSyncStatus(source.id, workspace.id, "Ready", new Date());
+      const embeddings = new FakeEmbeddingPort(
+        new Map([
+          ["Our business hours are 9am to 5pm.", fillVector(1)],
+          ["What are your business hours?", fillVector(1)]
+        ])
+      );
+      const chunks = new PrismaDocumentChunkRepository(embeddings);
+      await chunks.insertMany(workspace.id, source.id, [
+        { content: "Our business hours are 9am to 5pm.", embedding: fillVector(1), tokenCount: 8, contentHash: "hash-1" }
+      ]);
+
+      const matches = await chunks.findBestMatches(workspace.id, "What are your business hours?", 3);
+
+      expect(matches).toEqual([{ content: "Our business hours are 9am to 5pm." }]);
+    });
+
+    it("does not return chunks from a source that isn't Ready", async () => {
+      const { workspace, source } = await makeWorkspaceAndSource();
+      // Left at the default "Pending" status — never marked Ready.
+      const embeddings = new FakeEmbeddingPort(
+        new Map([
+          ["Our business hours are 9am to 5pm.", fillVector(1)],
+          ["What are your business hours?", fillVector(1)]
+        ])
+      );
+      const chunks = new PrismaDocumentChunkRepository(embeddings);
+      await chunks.insertMany(workspace.id, source.id, [
+        { content: "Our business hours are 9am to 5pm.", embedding: fillVector(1), tokenCount: 8, contentHash: "hash-1" }
+      ]);
+
+      const matches = await chunks.findBestMatches(workspace.id, "What are your business hours?", 3);
+
+      expect(matches).toEqual([]);
+    });
+
+    it("does not return chunks with low similarity to the query", async () => {
+      const { workspace, source } = await makeWorkspaceAndSource();
+      await sources.updateSyncStatus(source.id, workspace.id, "Ready", new Date());
+      const embeddings = new FakeEmbeddingPort(
+        new Map([
+          ["Our business hours are 9am to 5pm.", fillVector(1)],
+          ["Do you ship internationally?", alternatingVector()]
+        ])
+      );
+      const chunks = new PrismaDocumentChunkRepository(embeddings);
+      await chunks.insertMany(workspace.id, source.id, [
+        { content: "Our business hours are 9am to 5pm.", embedding: fillVector(1), tokenCount: 8, contentHash: "hash-1" }
+      ]);
+
+      const matches = await chunks.findBestMatches(workspace.id, "Do you ship internationally?", 3);
+
+      expect(matches).toEqual([]);
+    });
   });
 });
