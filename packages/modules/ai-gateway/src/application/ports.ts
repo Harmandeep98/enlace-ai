@@ -17,6 +17,7 @@ export interface ProviderConfigRepository {
   findById(id: string, workspaceId: string): Promise<ProviderConfig | undefined>;
   updateStatus(id: string, workspaceId: string, status: ProviderConfigStatus): Promise<void>;
   rotateCredential(id: string, workspaceId: string, credential: string): Promise<ProviderConfig>;
+  getDecryptedCredential(id: string, workspaceId: string): Promise<string | null>;
 }
 
 // Proves a submitted credential actually authenticates with that provider, before it's ever
@@ -36,4 +37,9 @@ export interface RotateProviderKeyInput {
   configId: string;
   workspaceId: string;
   credential: string;
+}
+
+export interface CostCeilingRepository {
+  getTokensSpentThisPeriod(workspaceId: string): Promise<number>;
+  addTokens(workspaceId: string, tokens: number): Promise<void>;
 }

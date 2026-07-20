@@ -148,6 +148,7 @@ model Workspace {
   knowledgeSources     KnowledgeSource[]
   documentChunks       DocumentChunk[]
   providerConfigs      ProviderConfig[]
+  aiUsageCounters      AiUsageCounter[]
 
   @@map("workspaces")
 }
@@ -318,4 +319,18 @@ model ProviderConfig {
   @@unique([workspaceId, provider])
   @@index([workspaceId])
   @@map("provider_configs")
+}
+
+model AiUsageCounter {
+  id          String   @id @default(uuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  periodStart DateTime
+  tokensSpent Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([workspaceId, periodStart])
+  @@index([workspaceId])
+  @@map("ai_usage_counters")
 }

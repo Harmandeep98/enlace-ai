@@ -20,6 +20,9 @@ class FakeProviderConfigRepository implements ProviderConfigRepository {
   async rotateCredential(): Promise<ProviderConfig> {
     throw new Error("not used in this test");
   }
+  async getDecryptedCredential(): Promise<string | null> {
+    return null;
+  }
 }
 
 class FakeProviderKeyValidator implements ProviderKeyValidator {

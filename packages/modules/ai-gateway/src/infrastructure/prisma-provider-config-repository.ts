@@ -1,5 +1,5 @@
 import { Prisma, prisma } from "@enlace/db";
-import { encrypt } from "./crypto/key-cipher.js";
+import { decrypt, encrypt } from "./crypto/key-cipher.js";
 import type { ProviderConfig, ProviderConfigStatus } from "../domain/entities.js";
 import type { ProviderConfigRepository, UpsertProviderConfigInput } from "../application/ports.js";
 
@@ -77,5 +77,11 @@ export class PrismaProviderConfigRepository implements ProviderConfigRepository 
       tx.providerConfig.update({ where: { id }, data: { encryptedApiKey } })
     );
     return toProviderConfig(row);
+  }
+
+  async getDecryptedCredential(id: string, workspaceId: string): Promise<string | null> {
+    const row = await this.withTenant(workspaceId, (tx) => tx.providerConfig.findFirst({ where: { id } }));
+    if (!row?.encryptedApiKey) return null;
+    return decrypt(row.encryptedApiKey, masterKey());
   }
 }

@@ -23,6 +23,9 @@ class FakeProviderConfigRepository implements ProviderConfigRepository {
     this.rotated.push({ id, workspaceId, credential });
     return this.existing!;
   }
+  async getDecryptedCredential(): Promise<string | null> {
+    return null;
+  }
 }
 
 class FakeProviderKeyValidator implements ProviderKeyValidator {

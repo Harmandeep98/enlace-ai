@@ -92,4 +92,29 @@ describe("PrismaProviderConfigRepository", () => {
 
     expect(foundFromB).toBeUndefined();
   });
+
+  describe("getDecryptedCredential", () => {
+    it("returns the original plaintext credential for a BringYourOwn config", async () => {
+      const workspace = await makeWorkspace();
+      const created = await repo.upsert({
+        workspaceId: workspace.id,
+        provider: "OpenAI",
+        keyMode: "BringYourOwn",
+        credential: "sk-real-looking-secret"
+      });
+
+      const credential = await repo.getDecryptedCredential(created.id, workspace.id);
+
+      expect(credential).toBe("sk-real-looking-secret");
+    });
+
+    it("returns null for a Platform config with no stored credential", async () => {
+      const workspace = await makeWorkspace();
+      const created = await repo.upsert({ workspaceId: workspace.id, provider: "Google", keyMode: "Platform", credential: null });
+
+      const credential = await repo.getDecryptedCredential(created.id, workspace.id);
+
+      expect(credential).toBeNull();
+    });
+  });
 });

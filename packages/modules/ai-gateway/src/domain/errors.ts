@@ -29,3 +29,10 @@ export class ProviderConfigNotFoundError extends DomainError {
     super("Provider config not found.");
   }
 }
+
+export class NoCompletionAdapterError extends DomainError {
+  readonly code = "no_completion_adapter";
+  constructor(provider: string) {
+    super(`No completion adapter exists for ${provider} yet.`);
+  }
+}
