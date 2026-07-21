@@ -30,6 +30,10 @@ class FakeConversationRepository implements ConversationRepository {
     this.statusUpdates.push({ conversationId, workspaceId, status, escalationReason: resolvedReason });
     return { ...(this.existing as Conversation), status, escalationReason: resolvedReason };
   }
+
+  async listMessages(): Promise<Message[]> {
+    return [];
+  }
 }
 
 function makeConversation(): Conversation {

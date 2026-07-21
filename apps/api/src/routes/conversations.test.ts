@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "@enlace/db";
+import { GeminiEmbeddingAdapter } from "@enlace/ai-gateway";
+import { PrismaDocumentChunkRepository, PrismaKnowledgeSourceRepository } from "@enlace/knowledge";
 import { buildApp } from "../server.js";
 
 describe("Conversations routes", () => {
@@ -11,6 +13,8 @@ describe("Conversations routes", () => {
     await prisma.conversation.deleteMany();
     await prisma.channelConnection.deleteMany();
     await prisma.faqEntry.deleteMany();
+    await prisma.documentChunk.deleteMany();
+    await prisma.knowledgeSource.deleteMany();
     await prisma.workspace.deleteMany();
   });
 
@@ -32,21 +36,29 @@ describe("Conversations routes", () => {
     });
   }
 
-  it("POST /v1/conversations starts a conversation with the first message", async () => {
-    const { workspace, channel } = await makeWorkspaceAndChannel();
+  it(
+    "POST /v1/conversations starts a conversation with the first message",
+    async () => {
+      const { workspace, channel } = await makeWorkspaceAndChannel();
 
-    const res = await app.request("/v1/conversations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi, I need help." })
-    });
+      const res = await app.request("/v1/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi, I need help." })
+      });
 
-    expect(res.status).toBe(201);
-    const body = await res.json();
-    expect(body.conversation.status).toBe("Open");
-    expect(body.message.content).toBe("Hi, I need help.");
-    expect(body.aiReply).toBeNull();
-  });
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.conversation.status).toBe("Open");
+      expect(body.message.content).toBe("Hi, I need help.");
+      // No FAQ/semantic-cache match, no knowledge seeded — retrieval finds nothing, but
+      // completion still runs on the empty context and returns a real, non-null answer
+      // (docs/superpowers/specs/2026-07-20-pipeline-retrieval-completion-design.md).
+      expect(body.aiReply).not.toBeNull();
+      expect(body.aiReply.resolutionPath).toBe("Retrieval");
+    },
+    30000
+  );
 
   it("POST /v1/conversations returns an FAQ-matched aiReply when the first message matches", async () => {
     const { workspace, channel } = await makeWorkspaceAndChannel();
@@ -65,85 +77,141 @@ describe("Conversations routes", () => {
     expect(body.aiReply.resolutionPath).toBe("FaqCache");
   });
 
-  it("POST /v1/conversations/:id/messages appends a message", async () => {
-    const { workspace, channel } = await makeWorkspaceAndChannel();
-    const startRes = await app.request("/v1/conversations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi." })
-    });
-    const { conversation } = await startRes.json();
+  it(
+    "POST /v1/conversations/:id/messages appends a message",
+    async () => {
+      const { workspace, channel } = await makeWorkspaceAndChannel();
+      const startRes = await app.request("/v1/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi." })
+      });
+      const { conversation } = await startRes.json();
 
-    const res = await app.request(`/v1/conversations/${conversation.id}/messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspaceId: workspace.id, sender: "Human", content: "How can I help?" })
-    });
+      const res = await app.request(`/v1/conversations/${conversation.id}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId: workspace.id, sender: "Human", content: "How can I help?" })
+      });
 
-    expect(res.status).toBe(201);
-    const body = await res.json();
-    expect(body.message.content).toBe("How can I help?");
-  });
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.message.content).toBe("How can I help?");
+    },
+    30000
+  );
 
-  it("POST /v1/conversations/:id/messages returns an FAQ-matched aiReply for a matching customer follow-up", async () => {
-    const { workspace, channel } = await makeWorkspaceAndChannel();
-    await makeFaq(workspace.id, "How do I reset my password", "Use the 'Forgot password' link on the login page.");
-    const startRes = await app.request("/v1/conversations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi." })
-    });
-    const { conversation } = await startRes.json();
+  it(
+    "POST /v1/conversations/:id/messages returns an FAQ-matched aiReply for a matching customer follow-up",
+    async () => {
+      const { workspace, channel } = await makeWorkspaceAndChannel();
+      await makeFaq(workspace.id, "How do I reset my password", "Use the 'Forgot password' link on the login page.");
+      const startRes = await app.request("/v1/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi." })
+      });
+      const { conversation } = await startRes.json();
 
-    const res = await app.request(`/v1/conversations/${conversation.id}/messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspaceId: workspace.id, sender: "Customer", content: "How do I reset my password" })
-    });
+      const res = await app.request(`/v1/conversations/${conversation.id}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId: workspace.id, sender: "Customer", content: "How do I reset my password" })
+      });
 
-    expect(res.status).toBe(201);
-    const body = await res.json();
-    expect(body.aiReply.content).toBe("Use the 'Forgot password' link on the login page.");
-    expect(body.aiReply.resolutionPath).toBe("FaqCache");
-  });
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.aiReply.content).toBe("Use the 'Forgot password' link on the login page.");
+      expect(body.aiReply.resolutionPath).toBe("FaqCache");
+    },
+    30000
+  );
 
-  it("POST /v1/conversations/:id/escalate transitions status and rejects a missing reason", async () => {
-    const { workspace, channel } = await makeWorkspaceAndChannel();
-    const startRes = await app.request("/v1/conversations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi." })
-    });
-    const { conversation } = await startRes.json();
+  it(
+    "POST /v1/conversations/:id/escalate transitions status and rejects a missing reason",
+    async () => {
+      const { workspace, channel } = await makeWorkspaceAndChannel();
+      const startRes = await app.request("/v1/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi." })
+      });
+      const { conversation } = await startRes.json();
 
-    const missingReason = await app.request(`/v1/conversations/${conversation.id}/escalate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspaceId: workspace.id })
-    });
-    expect(missingReason.status).toBe(400);
+      const missingReason = await app.request(`/v1/conversations/${conversation.id}/escalate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId: workspace.id })
+      });
+      expect(missingReason.status).toBe(400);
 
-    const res = await app.request(`/v1/conversations/${conversation.id}/escalate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspaceId: workspace.id, reason: "LowConfidence" })
-    });
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.conversation.status).toBe("Escalated");
-  });
+      const res = await app.request(`/v1/conversations/${conversation.id}/escalate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId: workspace.id, reason: "LowConfidence" })
+      });
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.conversation.status).toBe("Escalated");
+    },
+    30000
+  );
 
-  it("GET /v1/conversations/:id returns 404 for a workspace that doesn't own it", async () => {
-    const { workspace, channel } = await makeWorkspaceAndChannel();
-    const otherWorkspace = await prisma.workspace.create({ data: { name: "Other Co", slug: `test-${randomUUID()}` } });
-    const startRes = await app.request("/v1/conversations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi." })
-    });
-    const { conversation } = await startRes.json();
+  it(
+    "GET /v1/conversations/:id returns 404 for a workspace that doesn't own it",
+    async () => {
+      const { workspace, channel } = await makeWorkspaceAndChannel();
+      const otherWorkspace = await prisma.workspace.create({ data: { name: "Other Co", slug: `test-${randomUUID()}` } });
+      const startRes = await app.request("/v1/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi." })
+      });
+      const { conversation } = await startRes.json();
 
-    const res = await app.request(`/v1/conversations/${conversation.id}?workspaceId=${otherWorkspace.id}`);
-    expect(res.status).toBe(404);
-  });
+      const res = await app.request(`/v1/conversations/${conversation.id}?workspaceId=${otherWorkspace.id}`);
+      expect(res.status).toBe(404);
+    },
+    30000
+  );
+
+  // Hits the real Gemini API (free tier) — skipped without a key, same gating this repo
+  // already applies to every other real-API test this session.
+  const maybeIt = process.env.GEMINI_API_KEY ? it : it.skip;
+
+  maybeIt(
+    "returns a real retrieval-grounded AI reply when no cache matches",
+    async () => {
+      const { workspace, channel } = await makeWorkspaceAndChannel();
+
+      const sourceRepo = new PrismaKnowledgeSourceRepository();
+      const embeddingAdapter = new GeminiEmbeddingAdapter();
+      const chunkRepo = new PrismaDocumentChunkRepository(embeddingAdapter);
+
+      const source = await sourceRepo.create({ workspaceId: workspace.id, type: "Faq", origin: "manual" });
+      await sourceRepo.updateSyncStatus(source.id, workspace.id, "Ready", new Date());
+
+      const content = "Our return policy allows returns within 30 days of purchase with a valid receipt.";
+      const embedding = await embeddingAdapter.embed(content);
+      await chunkRepo.insertMany(workspace.id, source.id, [{ content, embedding, tokenCount: 20, contentHash: "hash-1" }]);
+
+      const res = await app.request("/v1/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: workspace.id,
+          channelId: channel.id,
+          customerRef: "customer-1",
+          message: "What is your return policy?"
+        })
+      });
+
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.aiReply).not.toBeNull();
+      expect(body.aiReply.resolutionPath).toBe("Retrieval");
+      expect(body.aiReply.content.length).toBeGreaterThan(0);
+    },
+    30000
+  );
 });

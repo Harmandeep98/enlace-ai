@@ -2,12 +2,17 @@
 import { BetterAuthAdapter, PrismaMembershipRepository, PrismaWorkspaceRepository, SignUpUseCase } from "@enlace/identity";
 import { PrismaChannelRepository } from "@enlace/channels";
 import {
+  CheckCostCeilingUseCase,
   ConfigureProviderUseCase,
   DisableProviderConfigUseCase,
   GeminiEmbeddingAdapter,
+  GoogleCompletionAdapter,
   LangChainProviderKeyValidator,
   ListProviderConfigsUseCase,
+  PrismaCostCeilingRepository,
   PrismaProviderConfigRepository,
+  RecordUsageUseCase,
+  ResolveProviderForCompletionUseCase,
   RotateProviderKeyUseCase
 } from "@enlace/ai-gateway";
 import {
@@ -15,6 +20,7 @@ import {
   CreateKnowledgeSourceUseCase,
   ListFaqsUseCase,
   ListKnowledgeSourcesUseCase,
+  PrismaDocumentChunkRepository,
   PrismaFaqRepository,
   PrismaKnowledgeSourceRepository,
   PrismaSemanticCacheRepository,
@@ -42,6 +48,12 @@ function buildContainer() {
   const semanticCacheRepository = new PrismaSemanticCacheRepository(embeddingAdapter);
   const providerConfigRepository = new PrismaProviderConfigRepository();
   const providerKeyValidator = new LangChainProviderKeyValidator();
+  const documentChunkRepository = new PrismaDocumentChunkRepository(embeddingAdapter);
+  const costCeilingRepository = new PrismaCostCeilingRepository();
+  const resolveProviderForCompletion = new ResolveProviderForCompletionUseCase(providerConfigRepository);
+  const checkCostCeiling = new CheckCostCeilingUseCase(costCeilingRepository);
+  const recordUsage = new RecordUsageUseCase(costCeilingRepository);
+  const completionAdapter = new GoogleCompletionAdapter(resolveProviderForCompletion, checkCostCeiling, recordUsage);
 
   const startConversationUseCase = new StartConversationUseCase(conversationRepository);
   const addMessageUseCase = new AddMessageUseCase(conversationRepository);
@@ -61,7 +73,9 @@ function buildContainer() {
       addMessageUseCase,
       conversationRepository,
       faqRepository,
-      semanticCacheRepository
+      semanticCacheRepository,
+      documentChunkRepository,
+      completionAdapter
     ),
     configureProviderUseCase: new ConfigureProviderUseCase(providerConfigRepository, providerKeyValidator),
     rotateProviderKeyUseCase: new RotateProviderKeyUseCase(providerConfigRepository, providerKeyValidator),

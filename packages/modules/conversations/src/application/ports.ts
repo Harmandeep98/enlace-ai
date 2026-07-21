@@ -19,6 +19,7 @@ export interface ConversationRepository {
   create(input: StartConversationInput): Promise<{ conversation: Conversation; message: Message }>;
   findById(conversationId: string, workspaceId: string): Promise<Conversation | undefined>;
   appendMessage(input: AppendMessageInput): Promise<Message>;
+  listMessages(conversationId: string, workspaceId: string, limit: number): Promise<Message[]>;
   updateStatus(
     conversationId: string,
     workspaceId: string,
@@ -42,4 +43,24 @@ export interface FaqCachePort {
 export interface SemanticCachePort {
   findBestMatch(workspaceId: string, message: string): Promise<{ answer: string } | undefined>;
   save(workspaceId: string, question: string, answer: string): Promise<void>;
+}
+
+// Consumer-defined structural port, same pattern as FaqCachePort/SemanticCachePort — Conversations
+// has no dependency on @enlace/knowledge; PrismaDocumentChunkRepository satisfies this
+// structurally, wired only at the composition root.
+export interface RetrievalPort {
+  findBestMatches(workspaceId: string, message: string, k: number): Promise<{ content: string }[]>;
+}
+
+// Consumer-defined structural port — Conversations has no dependency on @enlace/ai-gateway;
+// GoogleCompletionAdapter satisfies this structurally (its real CompletionResult has more
+// fields than {content: string}, but that's fine — a wider return type is always assignable
+// to a narrower one this consumer actually needs).
+export interface CompletionPort {
+  complete(request: {
+    workspaceId: string;
+    messages: { role: "user" | "assistant"; content: string }[];
+    context: { content: string }[];
+    tier: "small" | "large";
+  }): Promise<{ content: string }>;
 }

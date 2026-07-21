@@ -99,4 +99,50 @@ describe("PrismaConversationRepository", () => {
     expect(updated.status).toBe("Escalated");
     expect(updated.escalationReason).toBe("LowConfidence");
   });
+
+  it("lists a conversation's messages in chronological order, bounded by limit", async () => {
+    const workspace = await makeWorkspace();
+    const channel = await makeChannel(workspace.id);
+    const { conversation } = await repo.create({
+      workspaceId: workspace.id,
+      channelId: channel.id,
+      customerRef: "customer-1",
+      message: "First message"
+    });
+    await repo.appendMessage({
+      conversationId: conversation.id,
+      workspaceId: workspace.id,
+      sender: "AI",
+      content: "Second message",
+      resolutionPath: "FaqCache"
+    });
+    await repo.appendMessage({
+      conversationId: conversation.id,
+      workspaceId: workspace.id,
+      sender: "Customer",
+      content: "Third message",
+      resolutionPath: null
+    });
+
+    const messages = await repo.listMessages(conversation.id, workspace.id, 2);
+
+    expect(messages.map((m) => m.content)).toEqual(["Second message", "Third message"]);
+  });
+
+  // docs/21-testing-strategy.md §5 — id-only-equivalent isolation via RLS.
+  it("returns no messages for a conversation read under a different workspace", async () => {
+    const workspaceA = await makeWorkspace();
+    const channelA = await makeChannel(workspaceA.id);
+    const { conversation } = await repo.create({
+      workspaceId: workspaceA.id,
+      channelId: channelA.id,
+      customerRef: "customer-1",
+      message: "Hi"
+    });
+    const workspaceB = await makeWorkspace();
+
+    const messages = await repo.listMessages(conversation.id, workspaceB.id, 10);
+
+    expect(messages).toEqual([]);
+  });
 });

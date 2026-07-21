@@ -38,6 +38,10 @@ class FakeConversationRepository implements ConversationRepository {
   async updateStatus(): Promise<Conversation> {
     throw new Error("not used in this test");
   }
+
+  async listMessages(): Promise<Message[]> {
+    return [];
+  }
 }
 
 describe("StartConversationUseCase", () => {

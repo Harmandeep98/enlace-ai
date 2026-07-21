@@ -86,6 +86,13 @@ export class PrismaConversationRepository implements ConversationRepository {
     return toMessage(row);
   }
 
+  async listMessages(conversationId: string, workspaceId: string, limit: number): Promise<Message[]> {
+    const rows = await this.withTenant(workspaceId, (tx) =>
+      tx.message.findMany({ where: { conversationId }, orderBy: { createdAt: "desc" }, take: limit })
+    );
+    return rows.reverse().map(toMessage);
+  }
+
   async updateStatus(
     conversationId: string,
     workspaceId: string,
