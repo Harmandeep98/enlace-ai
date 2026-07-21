@@ -16,4 +16,15 @@ export class PrismaMembershipRepository implements MembershipRepository {
     });
     return { id: row.id, workspaceId: row.workspaceId, userId: row.userId, role: row.role, status: row.status };
   }
+
+  async findActiveOwnerEmail(workspaceId: string): Promise<string | undefined> {
+    const row = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.workspace_id', ${workspaceId}, true)`;
+      return tx.membership.findFirst({
+        where: { workspaceId, role: "Owner", status: "Active" },
+        include: { user: true }
+      });
+    });
+    return row?.user.email;
+  }
 }

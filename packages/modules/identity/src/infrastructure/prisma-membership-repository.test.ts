@@ -25,4 +25,35 @@ describe("PrismaMembershipRepository", () => {
     const visible = await prisma.membership.findMany();
     expect(visible.map((m) => m.id)).toEqual([membership.id]);
   });
+
+  it("resolves the Active Owner's email", async () => {
+    const user = await prisma.user.create({ data: { name: "Ada", email: `${randomUUID()}@example.com` } });
+    const workspace = await prisma.workspace.create({ data: { name: "Test Co", slug: `test-${randomUUID()}` } });
+    await repo.create({ workspaceId: workspace.id, userId: user.id, role: "Owner" });
+
+    const email = await repo.findActiveOwnerEmail(workspace.id);
+
+    expect(email).toBe(user.email);
+  });
+
+  it("returns undefined when the workspace has no Owner membership", async () => {
+    const user = await prisma.user.create({ data: { name: "Ada", email: `${randomUUID()}@example.com` } });
+    const workspace = await prisma.workspace.create({ data: { name: "Test Co", slug: `test-${randomUUID()}` } });
+    await repo.create({ workspaceId: workspace.id, userId: user.id, role: "Agent" });
+
+    const email = await repo.findActiveOwnerEmail(workspace.id);
+
+    expect(email).toBeUndefined();
+  });
+
+  it("returns undefined for a different workspace (tenant isolation)", async () => {
+    const user = await prisma.user.create({ data: { name: "Ada", email: `${randomUUID()}@example.com` } });
+    const workspace = await prisma.workspace.create({ data: { name: "Test Co", slug: `test-${randomUUID()}` } });
+    const otherWorkspace = await prisma.workspace.create({ data: { name: "Other Co", slug: `test-${randomUUID()}` } });
+    await repo.create({ workspaceId: workspace.id, userId: user.id, role: "Owner" });
+
+    const email = await repo.findActiveOwnerEmail(otherWorkspace.id);
+
+    expect(email).toBeUndefined();
+  });
 });

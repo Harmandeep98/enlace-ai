@@ -64,3 +64,10 @@ export interface CompletionPort {
     tier: "small" | "large";
   }): Promise<{ content: string }>;
 }
+
+// Consumer-defined structural port, same pattern as FaqCachePort/CompletionPort — Conversations
+// has no dependency on @enlace/notifications; SmtpEscalationNotifierAdapter satisfies this
+// structurally, wired only at the composition root.
+export interface EscalationNotifierPort {
+  notify(input: { workspaceId: string; conversationId: string; reason: EscalationReason }): Promise<void>;
+}

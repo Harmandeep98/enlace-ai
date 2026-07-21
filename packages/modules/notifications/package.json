@@ -1,0 +1,28 @@
+{
+  "name": "@enlace/notifications",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "dotenv -e ../../../.env -- vitest run"
+  },
+  "dependencies": {
+    "@enlace/shared": "workspace:*",
+    "@enlace/identity": "workspace:*",
+    "nodemailer": "^6.9.0"
+  },
+  "devDependencies": {
+    "@enlace/config": "workspace:*",
+    "@enlace/db": "workspace:*",
+    "@types/node": "^22.10.0",
+    "@types/nodemailer": "^6.4.0",
+    "dotenv-cli": "^7.4.0",
+    "vitest": "^2.1.8",
+    "typescript": "^5.7.0"
+  }
+}

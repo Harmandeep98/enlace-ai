@@ -34,10 +34,18 @@ import {
   PrismaConversationRepository,
   StartConversationUseCase
 } from "@enlace/conversations";
+import { SmtpEscalationNotifierAdapter } from "@enlace/notifications";
 
 function buildContainer() {
   const workspaceRepository = new PrismaWorkspaceRepository();
   const membershipRepository = new PrismaMembershipRepository();
+  const escalationNotifier = new SmtpEscalationNotifierAdapter(membershipRepository, {
+    host: process.env.SMTP_HOST ?? "",
+    port: Number(process.env.SMTP_PORT ?? 587),
+    user: process.env.SMTP_USER ?? "",
+    pass: process.env.SMTP_PASS ?? "",
+    from: process.env.SMTP_FROM ?? ""
+  });
   const authPort = new BetterAuthAdapter();
   const channelRepository = new PrismaChannelRepository();
   const conversationRepository = new PrismaConversationRepository();
@@ -62,7 +70,7 @@ function buildContainer() {
     signUpUseCase: new SignUpUseCase(workspaceRepository, membershipRepository, authPort, channelRepository),
     startConversationUseCase,
     addMessageUseCase,
-    escalateConversationUseCase: new EscalateConversationUseCase(conversationRepository),
+    escalateConversationUseCase: new EscalateConversationUseCase(conversationRepository, escalationNotifier),
     getConversationUseCase: new GetConversationUseCase(conversationRepository),
     createFaqUseCase: new CreateFaqUseCase(faqRepository),
     listFaqsUseCase: new ListFaqsUseCase(faqRepository),

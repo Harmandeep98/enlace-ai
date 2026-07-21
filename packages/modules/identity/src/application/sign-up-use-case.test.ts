@@ -34,6 +34,10 @@ class FakeMembershipRepository implements MembershipRepository {
     this.created.push(input);
     return { id: "membership-1", workspaceId: input.workspaceId, userId: input.userId, role: input.role, status: "Active" };
   }
+
+  async findActiveOwnerEmail(): Promise<string | undefined> {
+    return undefined;
+  }
 }
 
 class FakeAuthPort implements AuthPort {
