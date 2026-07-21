@@ -3,7 +3,9 @@
 // the (question, answer) pair into the semantic cache. Semantic cache is checked second.
 // Retrieval + completion is the 3rd stage: when neither cache matches, relevant knowledge
 // chunks are retrieved and a real answer is composed via AI Gateway's completion capability
-// (docs/superpowers/specs/2026-07-20-pipeline-retrieval-completion-design.md).
+// (docs/superpowers/specs/2026-07-20-pipeline-retrieval-completion-design.md). When that
+// completion comes back low-confidence, escalate instead of sending it
+// (docs/superpowers/specs/2026-07-21-confidence-driven-escalation-design.md).
 //
 // Only ever call addMessage() when the caller-supplied sender is "Customer" — an agent or the
 // AI's own reply shouldn't be checked against either cache. The route layer (apps/api) enforces
@@ -12,6 +14,7 @@ import type { AddMessageInput } from "./add-message-use-case.js";
 import { AddMessageUseCase } from "./add-message-use-case.js";
 import { StartConversationUseCase } from "./start-conversation-use-case.js";
 import type { StartConversationResult } from "./start-conversation-use-case.js";
+import { EscalateConversationUseCase } from "./escalate-conversation-use-case.js";
 import type { Message } from "../domain/entities.js";
 import type {
   CompletionPort,
@@ -24,6 +27,10 @@ import type {
 
 const MESSAGE_HISTORY_WINDOW = 10;
 const RETRIEVAL_K = 3;
+// Mirrors @enlace/ai-gateway's ESCALATION_CONFIDENCE_THRESHOLD (0.6) — duplicated here since
+// Conversations must not import @enlace/ai-gateway directly (consumer-defined structural ports).
+const LOW_CONFIDENCE_THRESHOLD = 0.6;
+const ESCALATION_REPLY = "I'm connecting you with a member of our team who can help.";
 
 export interface StartConversationWithReplyResult extends StartConversationResult {
   aiReply: Message | null;
@@ -46,7 +53,8 @@ export class IncomingMessageUseCase {
     private readonly faqCache: FaqCachePort,
     private readonly semanticCache: SemanticCachePort,
     private readonly retrieval: RetrievalPort,
-    private readonly completion: CompletionPort
+    private readonly completion: CompletionPort,
+    private readonly escalateConversationUseCase: EscalateConversationUseCase
   ) {}
 
   async startConversation(input: StartConversationInput): Promise<StartConversationWithReplyResult> {
@@ -95,7 +103,7 @@ export class IncomingMessageUseCase {
     const history = await this.conversations.listMessages(conversationId, workspaceId, MESSAGE_HISTORY_WINDOW);
     const chunks = await this.retrieval.findBestMatches(workspaceId, content, RETRIEVAL_K);
 
-    let result: { content: string };
+    let result: { content: string; confidence: { score: number } };
     try {
       result = await this.completion.complete({
         workspaceId,
@@ -105,6 +113,17 @@ export class IncomingMessageUseCase {
       });
     } catch {
       return null;
+    }
+
+    if (result.confidence.score < LOW_CONFIDENCE_THRESHOLD) {
+      await this.escalateConversationUseCase.execute({ conversationId, workspaceId, reason: "LowConfidence" });
+      return this.conversations.appendMessage({
+        conversationId,
+        workspaceId,
+        sender: "AI",
+        content: ESCALATION_REPLY,
+        resolutionPath: "Escalated"
+      });
     }
 
     return this.conversations.appendMessage({

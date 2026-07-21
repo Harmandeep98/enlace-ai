@@ -62,7 +62,7 @@ export interface CompletionPort {
     messages: { role: "user" | "assistant"; content: string }[];
     context: { content: string }[];
     tier: "small" | "large";
-  }): Promise<{ content: string }>;
+  }): Promise<{ content: string; confidence: { score: number } }>;
 }
 
 // Consumer-defined structural port, same pattern as FaqCachePort/CompletionPort — Conversations

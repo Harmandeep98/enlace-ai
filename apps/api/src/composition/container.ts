@@ -65,12 +65,13 @@ function buildContainer() {
 
   const startConversationUseCase = new StartConversationUseCase(conversationRepository);
   const addMessageUseCase = new AddMessageUseCase(conversationRepository);
+  const escalateConversationUseCase = new EscalateConversationUseCase(conversationRepository, escalationNotifier);
 
   return {
     signUpUseCase: new SignUpUseCase(workspaceRepository, membershipRepository, authPort, channelRepository),
     startConversationUseCase,
     addMessageUseCase,
-    escalateConversationUseCase: new EscalateConversationUseCase(conversationRepository, escalationNotifier),
+    escalateConversationUseCase,
     getConversationUseCase: new GetConversationUseCase(conversationRepository),
     createFaqUseCase: new CreateFaqUseCase(faqRepository),
     listFaqsUseCase: new ListFaqsUseCase(faqRepository),
@@ -83,7 +84,8 @@ function buildContainer() {
       faqRepository,
       semanticCacheRepository,
       documentChunkRepository,
-      completionAdapter
+      completionAdapter,
+      escalateConversationUseCase
     ),
     configureProviderUseCase: new ConfigureProviderUseCase(providerConfigRepository, providerKeyValidator),
     rotateProviderKeyUseCase: new RotateProviderKeyUseCase(providerConfigRepository, providerKeyValidator),

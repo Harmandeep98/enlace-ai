@@ -4,6 +4,7 @@ import type {
   AppendMessageInput,
   CompletionPort,
   ConversationRepository,
+  EscalationNotifierPort,
   FaqCachePort,
   RetrievalPort,
   SemanticCachePort,
@@ -11,6 +12,7 @@ import type {
 } from "./ports.js";
 import { AddMessageUseCase } from "./add-message-use-case.js";
 import { StartConversationUseCase } from "./start-conversation-use-case.js";
+import { EscalateConversationUseCase } from "./escalate-conversation-use-case.js";
 import { IncomingMessageUseCase } from "./incoming-message-use-case.js";
 
 let nextId = 1;
@@ -19,6 +21,7 @@ class FakeConversationRepository implements ConversationRepository {
   private conversations = new Map<string, Conversation>();
   private messagesByConversation = new Map<string, Message[]>();
   public appended: AppendMessageInput[] = [];
+  public statusUpdates: { conversationId: string; workspaceId: string; status: Conversation["status"]; escalationReason: Conversation["escalationReason"] }[] = [];
 
   async create(input: StartConversationInput) {
     const conversation: Conversation = {
@@ -61,8 +64,18 @@ class FakeConversationRepository implements ConversationRepository {
     return message;
   }
 
-  async updateStatus(): Promise<Conversation> {
-    throw new Error("not used in this test");
+  async updateStatus(
+    conversationId: string,
+    workspaceId: string,
+    status: Conversation["status"],
+    escalationReason: Conversation["escalationReason"] | undefined
+  ): Promise<Conversation> {
+    const resolvedReason = escalationReason ?? null;
+    this.statusUpdates.push({ conversationId, workspaceId, status, escalationReason: resolvedReason });
+    const existing = this.conversations.get(conversationId) as Conversation;
+    const updated = { ...existing, status, escalationReason: resolvedReason };
+    this.conversations.set(conversationId, updated);
+    return updated;
   }
 
   async listMessages(conversationId: string, _workspaceId: string, limit: number): Promise<Message[]> {
@@ -104,14 +117,22 @@ class FakeRetrievalPort implements RetrievalPort {
 
 class FakeCompletionPort implements CompletionPort {
   public calls: Parameters<CompletionPort["complete"]>[0][] = [];
-  constructor(private readonly behavior: { content: string } | "throw") {}
+  constructor(private readonly behavior: { content: string; confidence?: { score: number } } | "throw") {}
 
-  async complete(request: Parameters<CompletionPort["complete"]>[0]): Promise<{ content: string }> {
+  async complete(request: Parameters<CompletionPort["complete"]>[0]): Promise<{ content: string; confidence: { score: number } }> {
     this.calls.push(request);
     if (this.behavior === "throw") {
       throw new Error("completion failed");
     }
-    return this.behavior;
+    return { content: this.behavior.content, confidence: this.behavior.confidence ?? { score: 0.9 } };
+  }
+}
+
+class FakeEscalationNotifierPort implements EscalationNotifierPort {
+  public calls: { workspaceId: string; conversationId: string; reason: Conversation["escalationReason"] }[] = [];
+
+  async notify(input: { workspaceId: string; conversationId: string; reason: NonNullable<Conversation["escalationReason"]> }): Promise<void> {
+    this.calls.push(input);
   }
 }
 
@@ -119,7 +140,7 @@ function buildUseCase(options: {
   faqMatch?: { answer: string };
   semanticMatch?: { answer: string };
   retrievedChunks?: { content: string }[];
-  completionResult?: { content: string } | "throw";
+  completionResult?: { content: string; confidence?: { score: number } } | "throw";
 }) {
   const conversations = new FakeConversationRepository();
   const startConversationUseCase = new StartConversationUseCase(conversations);
@@ -128,6 +149,8 @@ function buildUseCase(options: {
   const semanticCache = new FakeSemanticCachePort(options.semanticMatch);
   const retrieval = new FakeRetrievalPort(options.retrievedChunks ?? []);
   const completion = new FakeCompletionPort(options.completionResult ?? { content: "A composed answer." });
+  const escalationNotifier = new FakeEscalationNotifierPort();
+  const escalateConversationUseCase = new EscalateConversationUseCase(conversations, escalationNotifier);
   const useCase = new IncomingMessageUseCase(
     startConversationUseCase,
     addMessageUseCase,
@@ -135,9 +158,10 @@ function buildUseCase(options: {
     faqCache,
     semanticCache,
     retrieval,
-    completion
+    completion,
+    escalateConversationUseCase
   );
-  return { useCase, conversations, semanticCache, retrieval, completion };
+  return { useCase, conversations, semanticCache, retrieval, completion, escalationNotifier };
 }
 
 describe("IncomingMessageUseCase", () => {
@@ -219,6 +243,28 @@ describe("IncomingMessageUseCase", () => {
       });
 
       expect(result.aiReply).toBeNull();
+    });
+
+    it("escalates and sends a placeholder reply when completion confidence is low", async () => {
+      const { useCase, conversations, escalationNotifier } = buildUseCase({
+        completionResult: { content: "A shaky guess.", confidence: { score: 0.2 } }
+      });
+
+      const result = await useCase.startConversation({
+        workspaceId: "workspace-1",
+        channelId: "channel-1",
+        customerRef: "customer-1",
+        message: "Something ambiguous"
+      });
+
+      expect(result.aiReply?.content).toBe("I'm connecting you with a member of our team who can help.");
+      expect(result.aiReply?.resolutionPath).toBe("Escalated");
+      expect(conversations.statusUpdates).toEqual([
+        { conversationId: result.conversation.id, workspaceId: "workspace-1", status: "Escalated", escalationReason: "LowConfidence" }
+      ]);
+      expect(escalationNotifier.calls).toEqual([
+        { workspaceId: "workspace-1", conversationId: result.conversation.id, reason: "LowConfidence" }
+      ]);
     });
   });
 

@@ -2,7 +2,7 @@
 export type ConversationStatus = "Open" | "AIHandling" | "Escalated" | "Resolved";
 export type MessageSender = "Customer" | "AI" | "Human";
 export type EscalationReason = "LowConfidence" | "CustomerRequest" | "ToolFailure" | "PolicyTrigger";
-export type ResolutionPath = "FaqCache" | "SemanticCache" | "Retrieval" | "ToolCall" | "SmallModel" | "LargeModel";
+export type ResolutionPath = "FaqCache" | "SemanticCache" | "Retrieval" | "ToolCall" | "SmallModel" | "LargeModel" | "Escalated";
 
 export interface Conversation {
   id: string;
