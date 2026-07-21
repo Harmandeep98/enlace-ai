@@ -36,7 +36,7 @@ describe("ResolveProviderForCompletionUseCase", () => {
 
     const resolved = await useCase.execute("ws-1", "small");
 
-    expect(resolved).toEqual({ provider: "Google", model: "gemini-flash-latest", credential: "platform-key", keyMode: "Platform" });
+    expect(resolved).toEqual({ provider: "Google", model: "gemini-flash-lite-latest", credential: "platform-key", keyMode: "Platform" });
     process.env.GEMINI_API_KEY = originalGeminiKey;
   });
 
@@ -48,7 +48,7 @@ describe("ResolveProviderForCompletionUseCase", () => {
 
     const resolved = await useCase.execute("ws-1", "large");
 
-    expect(resolved).toEqual({ provider: "Google", model: "gemini-flash-latest", credential: "sk-byo-google", keyMode: "BringYourOwn" });
+    expect(resolved).toEqual({ provider: "Google", model: "gemini-flash-lite-latest", credential: "sk-byo-google", keyMode: "BringYourOwn" });
   });
 
   it("throws NoCompletionAdapterError for a non-Google Active config", async () => {

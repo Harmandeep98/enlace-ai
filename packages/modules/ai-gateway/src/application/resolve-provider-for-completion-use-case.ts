@@ -12,8 +12,8 @@ export interface ResolvedProvider {
 // Both tiers map to the same model for Google today — no stronger reachable model exists on
 // this project's free-tier key (docs/superpowers/specs/2026-07-19-ai-gateway-completion-design.md).
 const GOOGLE_MODEL_BY_TIER: Record<Tier, string> = {
-  small: "gemini-flash-latest",
-  large: "gemini-flash-latest"
+  small: "gemini-flash-lite-latest",
+  large: "gemini-flash-lite-latest"
 };
 
 export class ResolveProviderForCompletionUseCase {

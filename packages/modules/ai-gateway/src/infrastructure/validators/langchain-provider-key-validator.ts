@@ -26,8 +26,8 @@ export class LangChainProviderKeyValidator implements ProviderKeyValidator {
     switch (provider) {
       case "Google":
         // gemini-2.0-flash has zero free-tier quota on this project's key (confirmed via a real
-        // 429 with limit: 0) — gemini-flash-latest is the model this account can actually call.
-        return new ChatGoogleGenerativeAI({ apiKey: credential, model: "gemini-flash-latest" });
+        // 429 with limit: 0) — gemini-flash-lite-latest is the model this account can actually call.
+        return new ChatGoogleGenerativeAI({ apiKey: credential, model: "gemini-flash-lite-latest" });
       case "OpenAI":
         return new ChatOpenAI({ apiKey: credential, model: "gpt-4o-mini" });
       case "Anthropic":

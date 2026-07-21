@@ -6,7 +6,7 @@ import type { ResolveProviderForCompletionUseCase } from "../../application/reso
 import type { CompletionChunk, CompletionRequest, CompletionResult } from "../../domain/entities.js";
 import { combineConfidence, detectDeflection, detectUsedContext, ESCALATION_CONFIDENCE_THRESHOLD } from "./confidence.js";
 
-// Gemini 2.5 Flash generation pricing, which gemini-flash-latest currently aliases to
+// Gemini 2.5 Flash generation pricing, which gemini-flash-lite-latest currently aliases to
 // (docs/superpowers/specs/2026-07-19-ai-gateway-completion-design.md) — informational only,
 // the cost ceiling itself enforces on raw token count, not this estimate.
 const INPUT_RATE_PER_MILLION = 0.3;

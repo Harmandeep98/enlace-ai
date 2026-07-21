@@ -65,7 +65,7 @@ describe("GoogleCompletionAdapter", () => {
     expect(result.confidence.score).toBeGreaterThanOrEqual(0);
     expect(result.confidence.score).toBeLessThanOrEqual(1);
     expect(result.provider).toBe("Google");
-    expect(result.model).toBe("gemini-flash-latest");
+    expect(result.model).toBe("gemini-flash-lite-latest");
     expect(result.usage.tokensIn).toBeGreaterThan(0);
     expect(result.usage.tokensOut).toBeGreaterThan(0);
     expect(result.usage.estimatedCost).toBeGreaterThan(0);
