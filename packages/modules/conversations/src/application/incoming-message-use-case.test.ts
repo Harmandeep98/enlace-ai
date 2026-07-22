@@ -147,15 +147,15 @@ class FakeCompletionPort implements CompletionPort {
 }
 
 class FakeToolInvokerPort implements ToolInvokerPort {
-  public invokeCalls: { toolName: string; args: Record<string, unknown>; workspaceId: string }[] = [];
+  public invokeCalls: { toolName: string; args: Record<string, unknown>; workspaceId: string; conversationId: string }[] = [];
   constructor(private readonly schemas: { name: string; description: string; parameters: Record<string, unknown> }[], private readonly result: { content: string }) {}
 
   async listToolSchemas(): Promise<{ name: string; description: string; parameters: Record<string, unknown> }[]> {
     return this.schemas;
   }
 
-  async invoke(toolName: string, args: Record<string, unknown>, workspaceId: string): Promise<{ content: string }> {
-    this.invokeCalls.push({ toolName, args, workspaceId });
+  async invoke(toolName: string, args: Record<string, unknown>, workspaceId: string, conversationId: string): Promise<{ content: string }> {
+    this.invokeCalls.push({ toolName, args, workspaceId, conversationId });
     return this.result;
   }
 }
@@ -318,7 +318,9 @@ describe("IncomingMessageUseCase", () => {
         message: "What's the status of order 12345?"
       });
 
-      expect(toolInvoker.invokeCalls).toEqual([{ toolName: "get_order_status", args: { orderId: "12345" }, workspaceId: "workspace-1" }]);
+      expect(toolInvoker.invokeCalls).toEqual([
+        { toolName: "get_order_status", args: { orderId: "12345" }, workspaceId: "workspace-1", conversationId: result.conversation.id }
+      ]);
       expect(result.aiReply?.content).toBe("Your order shipped yesterday.");
       expect(result.aiReply?.resolutionPath).toBe("Retrieval");
       expect(completion.calls[1]?.priorToolExchanges).toEqual([{ toolCalls: [toolCall], results: [{ id: "call-1", content: "Your order shipped yesterday." }] }]);

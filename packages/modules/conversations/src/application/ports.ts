@@ -89,5 +89,5 @@ export interface EscalationNotifierPort {
 // InvokeToolUseCase satisfies this structurally, wired only at the composition root.
 export interface ToolInvokerPort {
   listToolSchemas(workspaceId: string): Promise<{ name: string; description: string; parameters: Record<string, unknown> }[]>;
-  invoke(toolName: string, args: Record<string, unknown>, workspaceId: string): Promise<{ content: string }>;
+  invoke(toolName: string, args: Record<string, unknown>, workspaceId: string, conversationId: string): Promise<{ content: string }>;
 }

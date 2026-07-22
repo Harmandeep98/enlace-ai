@@ -145,7 +145,7 @@ export class IncomingMessageUseCase {
         const results = await Promise.all(
           result.toolCalls.map(async (toolCall) => {
             try {
-              const toolResult = await this.toolInvoker.invoke(toolCall.name, toolCall.args, workspaceId);
+              const toolResult = await this.toolInvoker.invoke(toolCall.name, toolCall.args, workspaceId, conversationId);
               return { id: toolCall.id, content: toolResult.content };
             } catch (error) {
               return { id: toolCall.id, content: `Error: ${error instanceof Error ? error.message : "tool invocation failed"}` };
