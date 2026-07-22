@@ -290,6 +290,9 @@ importers:
       '@enlace/shared':
         specifier: workspace:*
         version: link:../../shared
+      '@enlace/temporal':
+        specifier: workspace:*
+        version: link:../../temporal
     devDependencies:
       '@enlace/config':
         specifier: workspace:*

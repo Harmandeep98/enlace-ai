@@ -30,3 +30,9 @@ export interface IntegrationConnectionRepository {
   findByWorkspaceAndType(workspaceId: string, type: IntegrationType): Promise<IntegrationConnection | undefined>;
   getDecryptedCredential(connectionId: string, workspaceId: string): Promise<string | undefined>;
 }
+
+// Consumer-defined structural port, same pattern as every cross-package port this session —
+// this module doesn't need to know Temporal's API shape beyond "schedule this workspace's sync".
+export interface ZendeskSyncTriggerPort {
+  scheduleSync(workspaceId: string, connectionId: string): Promise<void>;
+}
