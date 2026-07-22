@@ -5,6 +5,7 @@ import { conversationRoutes } from "./routes/conversations.js";
 import { faqRoutes } from "./routes/faqs.js";
 import { knowledgeSourceRoutes } from "./routes/knowledge-sources.js";
 import { aiGatewayRoutes } from "./routes/ai-gateway.js";
+import { integrationRoutes } from "./routes/integrations.js";
 import type { AppEnv } from "./types.js";
 
 export function buildApp() {
@@ -19,5 +20,6 @@ export function buildApp() {
   app.route("/", faqRoutes);
   app.route("/", knowledgeSourceRoutes);
   app.route("/", aiGatewayRoutes);
+  app.route("/", integrationRoutes);
   return app;
 }

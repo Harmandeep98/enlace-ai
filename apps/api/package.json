@@ -19,6 +19,7 @@
     "@enlace/conversations": "workspace:*",
     "@enlace/db": "workspace:*",
     "@enlace/knowledge": "workspace:*",
+    "@enlace/integrations": "workspace:*",
     "@enlace/notifications": "workspace:*",
     "@enlace/identity": "workspace:*",
     "@enlace/shared": "workspace:*"

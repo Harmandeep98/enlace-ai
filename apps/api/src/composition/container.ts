@@ -35,6 +35,7 @@ import {
   StartConversationUseCase
 } from "@enlace/conversations";
 import { SmtpEscalationNotifierAdapter } from "@enlace/notifications";
+import { CreateIntegrationConnectionUseCase, InvokeToolUseCase, PrismaIntegrationConnectionRepository, WebhookAdapter } from "@enlace/integrations";
 
 function buildContainer() {
   const workspaceRepository = new PrismaWorkspaceRepository();
@@ -66,6 +67,10 @@ function buildContainer() {
   const startConversationUseCase = new StartConversationUseCase(conversationRepository);
   const addMessageUseCase = new AddMessageUseCase(conversationRepository);
   const escalateConversationUseCase = new EscalateConversationUseCase(conversationRepository, escalationNotifier);
+  const integrationConnectionRepository = new PrismaIntegrationConnectionRepository();
+  const integrationAdapters = { Webhook: new WebhookAdapter() };
+  const createIntegrationConnectionUseCase = new CreateIntegrationConnectionUseCase(integrationConnectionRepository, integrationAdapters);
+  const invokeToolUseCase = new InvokeToolUseCase(integrationConnectionRepository, integrationAdapters);
 
   return {
     signUpUseCase: new SignUpUseCase(workspaceRepository, membershipRepository, authPort, channelRepository),
@@ -77,6 +82,7 @@ function buildContainer() {
     listFaqsUseCase: new ListFaqsUseCase(faqRepository),
     createKnowledgeSourceUseCase: new CreateKnowledgeSourceUseCase(knowledgeSourceRepository, ingestionTrigger),
     listKnowledgeSourcesUseCase: new ListKnowledgeSourcesUseCase(knowledgeSourceRepository),
+    createIntegrationConnectionUseCase,
     incomingMessageUseCase: new IncomingMessageUseCase(
       startConversationUseCase,
       addMessageUseCase,
@@ -85,7 +91,8 @@ function buildContainer() {
       semanticCacheRepository,
       documentChunkRepository,
       completionAdapter,
-      escalateConversationUseCase
+      escalateConversationUseCase,
+      invokeToolUseCase
     ),
     configureProviderUseCase: new ConfigureProviderUseCase(providerConfigRepository, providerKeyValidator),
     rotateProviderKeyUseCase: new RotateProviderKeyUseCase(providerConfigRepository, providerKeyValidator),

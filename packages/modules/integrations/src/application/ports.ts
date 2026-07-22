@@ -12,7 +12,7 @@ export interface CreateIntegrationConnectionInput {
   workspaceId: string;
   type: IntegrationType;
   config: Record<string, unknown>;
-  credential: string | undefined;
+  credential?: string;
 }
 
 export interface IntegrationConnectionRepository {

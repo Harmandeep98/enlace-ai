@@ -32,6 +32,9 @@ importers:
       '@enlace/identity':
         specifier: workspace:*
         version: link:../../packages/modules/identity
+      '@enlace/integrations':
+        specifier: workspace:*
+        version: link:../../packages/modules/integrations
       '@enlace/knowledge':
         specifier: workspace:*
         version: link:../../packages/modules/knowledge
