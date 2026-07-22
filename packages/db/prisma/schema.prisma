@@ -150,6 +150,7 @@ model Workspace {
   documentChunks       DocumentChunk[]
   providerConfigs      ProviderConfig[]
   aiUsageCounters      AiUsageCounter[]
+  integrationConnections IntegrationConnection[]
 
   @@map("workspaces")
 }
@@ -320,6 +321,32 @@ model ProviderConfig {
   @@unique([workspaceId, provider])
   @@index([workspaceId])
   @@map("provider_configs")
+}
+
+enum IntegrationType {
+  Webhook
+  Slack
+  Zendesk
+}
+
+enum IntegrationConnectionStatus {
+  Active
+  Disabled
+}
+
+model IntegrationConnection {
+  id                  String                       @id @default(uuid())
+  workspaceId         String
+  workspace           Workspace                    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  type                IntegrationType
+  config              Json
+  encryptedCredential String?
+  status              IntegrationConnectionStatus  @default(Active)
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+
+  @@index([workspaceId])
+  @@map("integration_connections")
 }
 
 model AiUsageCounter {
