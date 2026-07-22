@@ -1,10 +1,20 @@
 import type { IntegrationConnection, IntegrationType, ToolCallResult, ToolSchema } from "../domain/entities.js";
 
+export interface ToolInvocationContext {
+  conversationId: string;
+}
+
 export interface IntegrationAdapter {
   readonly type: IntegrationType;
   validateConfig(config: unknown, credential: string | undefined): Promise<{ valid: boolean; error?: string }>;
   getToolSchemas(config: unknown): ToolSchema[];
-  invokeTool(name: string, args: Record<string, unknown>, config: unknown, credential: string | undefined): Promise<ToolCallResult>;
+  invokeTool(
+    name: string,
+    args: Record<string, unknown>,
+    config: unknown,
+    credential: string | undefined,
+    context?: ToolInvocationContext
+  ): Promise<ToolCallResult>;
   sync?(config: unknown, credential: string | undefined): Promise<{ resolvedConversationRefs: string[] }>;
 }
 
