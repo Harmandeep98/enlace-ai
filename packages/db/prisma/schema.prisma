@@ -345,7 +345,7 @@ model IntegrationConnection {
   createdAt           DateTime                     @default(now())
   updatedAt           DateTime                     @updatedAt
 
-  @@index([workspaceId])
+  @@unique([workspaceId, type])
   @@map("integration_connections")
 }
 

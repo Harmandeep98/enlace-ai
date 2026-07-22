@@ -3,5 +3,6 @@
 // which would violate the package-never-imports-an-app rule (docs/03-monorepo-structure.md §6).
 export const WORKFLOW_NAMES = {
   HEALTH_CHECK: "healthCheckWorkflow",
-  KNOWLEDGE_SYNC: "knowledgeSyncWorkflow"
+  KNOWLEDGE_SYNC: "knowledgeSyncWorkflow",
+  ZENDESK_SYNC: "zendeskSyncWorkflow"
 } as const;
