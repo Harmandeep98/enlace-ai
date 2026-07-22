@@ -22,7 +22,8 @@
     "@enlace/integrations": "workspace:*",
     "@enlace/notifications": "workspace:*",
     "@enlace/identity": "workspace:*",
-    "@enlace/shared": "workspace:*"
+    "@enlace/shared": "workspace:*",
+    "@enlace/contracts": "workspace:*"
   },
   "devDependencies": {
     "@enlace/config": "workspace:*",

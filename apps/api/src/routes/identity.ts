@@ -1,16 +1,9 @@
 // docs/07-api-design.md §4 — a route validates, calls one use case, maps the result. Nothing else.
 import { Hono } from "hono";
-import { z } from "zod";
+import { signUpSchema } from "@enlace/contracts";
 import { container } from "../composition/container.js";
 import { mapDomainErrorToResponse } from "../middleware/error-handler.js";
 import type { AppEnv } from "../types.js";
-
-const signUpSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-  name: z.string().min(1),
-  workspaceName: z.string().min(1)
-});
 
 export const identityRoutes = new Hono<AppEnv>();
 

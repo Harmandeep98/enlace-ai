@@ -23,6 +23,9 @@ importers:
       '@enlace/channels':
         specifier: workspace:*
         version: link:../../packages/modules/channels
+      '@enlace/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@enlace/conversations':
         specifier: workspace:*
         version: link:../../packages/modules/conversations
@@ -145,6 +148,22 @@ importers:
       typescript-eslint:
         specifier: ^8.18.0
         version: 8.64.0(eslint@9.39.5(jiti@2.7.0))(typescript@5.9.3)
+
+  packages/contracts:
+    dependencies:
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
+    devDependencies:
+      '@enlace/config':
+        specifier: workspace:*
+        version: link:../config
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)(terser@5.49.0)
 
   packages/db:
     dependencies:
