@@ -279,4 +279,56 @@ describe("Conversations routes", () => {
     },
     30000
   );
+
+  it("fans an escalation out to a workspace's configured Slack channel", async () => {
+    const { workspace, channel } = await makeWorkspaceAndChannel();
+
+    const receivedBodies: string[] = [];
+    const server = createServer((req, res) => {
+      let body = "";
+      req.on("data", (chunk) => (body += chunk));
+      req.on("end", () => {
+        receivedBodies.push(body);
+        res.writeHead(200, { "Content-Type": "text/plain" });
+        res.end("ok");
+      });
+    });
+    await new Promise<void>((resolve) => server.listen(0, resolve));
+    const address = server.address();
+    const slackWebhookUrl = address && typeof address === "object" ? `http://127.0.0.1:${address.port}` : "";
+
+    const connectionRes = await app.request("/v1/integrations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workspaceId: workspace.id, type: "Slack", config: { webhookUrl: slackWebhookUrl } })
+    });
+    expect(connectionRes.status).toBe(201);
+
+    const startRes = await app.request("/v1/conversations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi." })
+    });
+    const { conversation } = await startRes.json();
+
+    const escalateRes = await app.request(`/v1/conversations/${conversation.id}/escalate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workspaceId: workspace.id, reason: "CustomerRequest" })
+    });
+    expect(escalateRes.status).toBe(200);
+
+    // receivedBodies always includes validateConfig's connection-test ping (fired when the
+    // Slack connection was created) first. It may also include an earlier real-Gemini
+    // confidence-driven auto-escalation notification (docs/superpowers/specs/
+    // 2026-07-21-confidence-driven-escalation-design.md) if the "Hi." message's completion
+    // happened to score below the confidence threshold — genuine real-API non-determinism, not
+    // a bug in this test. Assert on the specific escalation notification this test triggered
+    // (tagged with its own reason) rather than the exact call count or position.
+    const escalationBody = receivedBodies.map((body) => JSON.parse(body)).find((parsed) => parsed.text?.includes("CustomerRequest"));
+    expect(escalationBody).toBeDefined();
+    expect(escalationBody.text).toContain(conversation.id);
+
+    server.close();
+  });
 });
