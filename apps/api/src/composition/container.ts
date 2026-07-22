@@ -34,11 +34,13 @@ import {
   PrismaConversationRepository,
   StartConversationUseCase
 } from "@enlace/conversations";
-import { SmtpEscalationNotifierAdapter } from "@enlace/notifications";
+import { CompositeEscalationNotifier, SmtpEscalationNotifierAdapter } from "@enlace/notifications";
+import type { SlackNotifierPort } from "@enlace/notifications";
 import {
   CreateIntegrationConnectionUseCase,
   InvokeToolUseCase,
   PrismaIntegrationConnectionRepository,
+  SlackAdapter,
   TemporalZendeskSyncTrigger,
   WebhookAdapter,
   ZendeskAdapter
@@ -47,13 +49,14 @@ import {
 function buildContainer() {
   const workspaceRepository = new PrismaWorkspaceRepository();
   const membershipRepository = new PrismaMembershipRepository();
-  const escalationNotifier = new SmtpEscalationNotifierAdapter(membershipRepository, {
+  const smtpEscalationNotifier = new SmtpEscalationNotifierAdapter(membershipRepository, {
     host: process.env.SMTP_HOST ?? "",
     port: Number(process.env.SMTP_PORT ?? 587),
     user: process.env.SMTP_USER ?? "",
     pass: process.env.SMTP_PASS ?? "",
     from: process.env.SMTP_FROM ?? ""
   });
+  const slackAdapter = new SlackAdapter();
   const authPort = new BetterAuthAdapter();
   const channelRepository = new PrismaChannelRepository();
   const conversationRepository = new PrismaConversationRepository();
@@ -73,9 +76,17 @@ function buildContainer() {
 
   const startConversationUseCase = new StartConversationUseCase(conversationRepository);
   const addMessageUseCase = new AddMessageUseCase(conversationRepository);
-  const escalateConversationUseCase = new EscalateConversationUseCase(conversationRepository, escalationNotifier);
   const integrationConnectionRepository = new PrismaIntegrationConnectionRepository();
-  const integrationAdapters = { Webhook: new WebhookAdapter(), Zendesk: new ZendeskAdapter() };
+  const integrationAdapters = { Webhook: new WebhookAdapter(), Zendesk: new ZendeskAdapter(), Slack: slackAdapter };
+
+  async function resolveSlackNotifier(workspaceId: string): Promise<SlackNotifierPort | undefined> {
+    const connection = await integrationConnectionRepository.findByWorkspaceAndType(workspaceId, "Slack");
+    if (!connection || connection.status !== "Active") return undefined;
+    return { notify: (text: string) => slackAdapter.notify(text, connection.config) };
+  }
+
+  const escalationNotifier = new CompositeEscalationNotifier(smtpEscalationNotifier, resolveSlackNotifier);
+  const escalateConversationUseCase = new EscalateConversationUseCase(conversationRepository, escalationNotifier);
   const zendeskSyncTrigger = new TemporalZendeskSyncTrigger();
   const createIntegrationConnectionUseCase = new CreateIntegrationConnectionUseCase(integrationConnectionRepository, integrationAdapters, zendeskSyncTrigger);
   const invokeToolUseCase = new InvokeToolUseCase(integrationConnectionRepository, integrationAdapters);
