@@ -35,7 +35,14 @@ import {
   StartConversationUseCase
 } from "@enlace/conversations";
 import { SmtpEscalationNotifierAdapter } from "@enlace/notifications";
-import { CreateIntegrationConnectionUseCase, InvokeToolUseCase, PrismaIntegrationConnectionRepository, WebhookAdapter } from "@enlace/integrations";
+import {
+  CreateIntegrationConnectionUseCase,
+  InvokeToolUseCase,
+  PrismaIntegrationConnectionRepository,
+  TemporalZendeskSyncTrigger,
+  WebhookAdapter,
+  ZendeskAdapter
+} from "@enlace/integrations";
 
 function buildContainer() {
   const workspaceRepository = new PrismaWorkspaceRepository();
@@ -68,8 +75,9 @@ function buildContainer() {
   const addMessageUseCase = new AddMessageUseCase(conversationRepository);
   const escalateConversationUseCase = new EscalateConversationUseCase(conversationRepository, escalationNotifier);
   const integrationConnectionRepository = new PrismaIntegrationConnectionRepository();
-  const integrationAdapters = { Webhook: new WebhookAdapter() };
-  const createIntegrationConnectionUseCase = new CreateIntegrationConnectionUseCase(integrationConnectionRepository, integrationAdapters);
+  const integrationAdapters = { Webhook: new WebhookAdapter(), Zendesk: new ZendeskAdapter() };
+  const zendeskSyncTrigger = new TemporalZendeskSyncTrigger();
+  const createIntegrationConnectionUseCase = new CreateIntegrationConnectionUseCase(integrationConnectionRepository, integrationAdapters, zendeskSyncTrigger);
   const invokeToolUseCase = new InvokeToolUseCase(integrationConnectionRepository, integrationAdapters);
 
   return {
