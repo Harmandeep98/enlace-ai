@@ -1,11 +1,12 @@
 import { IntegrationValidationFailedError, NoAdapterRegisteredError } from "../domain/errors.js";
 import type { IntegrationConnection, IntegrationType } from "../domain/entities.js";
-import type { CreateIntegrationConnectionInput, IntegrationAdapter, IntegrationConnectionRepository } from "./ports.js";
+import type { CreateIntegrationConnectionInput, IntegrationAdapter, IntegrationConnectionRepository, ZendeskSyncTriggerPort } from "./ports.js";
 
 export class CreateIntegrationConnectionUseCase {
   constructor(
     private readonly connections: IntegrationConnectionRepository,
-    private readonly adapters: Partial<Record<IntegrationType, IntegrationAdapter>>
+    private readonly adapters: Partial<Record<IntegrationType, IntegrationAdapter>>,
+    private readonly zendeskSyncTrigger: ZendeskSyncTriggerPort
   ) {}
 
   async execute(input: CreateIntegrationConnectionInput): Promise<IntegrationConnection> {
@@ -17,6 +18,12 @@ export class CreateIntegrationConnectionUseCase {
       throw new IntegrationValidationFailedError(validation.error ?? "unknown validation error");
     }
 
-    return this.connections.create(input);
+    const connection = await this.connections.create(input);
+
+    if (connection.type === "Zendesk") {
+      await this.zendeskSyncTrigger.scheduleSync(connection.workspaceId, connection.id);
+    }
+
+    return connection;
   }
 }

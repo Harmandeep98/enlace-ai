@@ -38,20 +38,35 @@ class FakeWebhookAdapter implements IntegrationAdapter {
   }
 }
 
+class FakeZendeskSyncTriggerPort {
+  public calls: { workspaceId: string; connectionId: string }[] = [];
+
+  async scheduleSync(workspaceId: string, connectionId: string): Promise<void> {
+    this.calls.push({ workspaceId, connectionId });
+  }
+}
+
 describe("CreateIntegrationConnectionUseCase", () => {
   it("persists the connection when validation passes", async () => {
     const connections = new FakeIntegrationConnectionRepository();
-    const useCase = new CreateIntegrationConnectionUseCase(connections, { Webhook: new FakeWebhookAdapter({ valid: true }) });
+    const zendeskSyncTrigger = new FakeZendeskSyncTriggerPort();
+    const useCase = new CreateIntegrationConnectionUseCase(connections, { Webhook: new FakeWebhookAdapter({ valid: true }) }, zendeskSyncTrigger);
 
     const result = await useCase.execute({ workspaceId: "ws-1", type: "Webhook", config: { url: "https://example.com" }, credential: "secret" });
 
     expect(result.id).toBe("connection-1");
     expect(connections.created).toEqual([{ workspaceId: "ws-1", type: "Webhook", config: { url: "https://example.com" }, credential: "secret" }]);
+    expect(zendeskSyncTrigger.calls).toEqual([]);
   });
 
   it("throws IntegrationValidationFailedError and does not persist when validation fails", async () => {
     const connections = new FakeIntegrationConnectionRepository();
-    const useCase = new CreateIntegrationConnectionUseCase(connections, { Webhook: new FakeWebhookAdapter({ valid: false, error: "unreachable" }) });
+    const zendeskSyncTrigger = new FakeZendeskSyncTriggerPort();
+    const useCase = new CreateIntegrationConnectionUseCase(
+      connections,
+      { Webhook: new FakeWebhookAdapter({ valid: false, error: "unreachable" }) },
+      zendeskSyncTrigger
+    );
 
     await expect(
       useCase.execute({ workspaceId: "ws-1", type: "Webhook", config: { url: "https://example.com" }, credential: "secret" })
@@ -61,10 +76,25 @@ describe("CreateIntegrationConnectionUseCase", () => {
 
   it("throws NoAdapterRegisteredError for a type with no registered adapter", async () => {
     const connections = new FakeIntegrationConnectionRepository();
-    const useCase = new CreateIntegrationConnectionUseCase(connections, {});
+    const zendeskSyncTrigger = new FakeZendeskSyncTriggerPort();
+    const useCase = new CreateIntegrationConnectionUseCase(connections, {}, zendeskSyncTrigger);
 
     await expect(
       useCase.execute({ workspaceId: "ws-1", type: "Zendesk", config: {}, credential: "secret" })
     ).rejects.toThrow("No integration adapter is registered for type Zendesk yet.");
+  });
+
+  it("schedules a Zendesk sync after persisting a Zendesk connection", async () => {
+    const connections = new FakeIntegrationConnectionRepository();
+    const zendeskSyncTrigger = new FakeZendeskSyncTriggerPort();
+    const useCase = new CreateIntegrationConnectionUseCase(
+      connections,
+      { Zendesk: new FakeWebhookAdapter({ valid: true }) },
+      zendeskSyncTrigger
+    );
+
+    const result = await useCase.execute({ workspaceId: "ws-1", type: "Zendesk", config: { subdomain: "acme" }, credential: "token" });
+
+    expect(zendeskSyncTrigger.calls).toEqual([{ workspaceId: "ws-1", connectionId: result.id }]);
   });
 });
