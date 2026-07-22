@@ -1,5 +1,5 @@
 import { Prisma, prisma } from "@enlace/db";
-import { decrypt, encrypt } from "./crypto/key-cipher.js";
+import { decrypt, encrypt } from "@enlace/shared";
 import type { ProviderConfig, ProviderConfigStatus } from "../domain/entities.js";
 import type { ProviderConfigRepository, UpsertProviderConfigInput } from "../application/ports.js";
 
