@@ -78,6 +78,12 @@ importers:
       '@enlace/ai-gateway':
         specifier: workspace:*
         version: link:../../packages/modules/ai-gateway
+      '@enlace/conversations':
+        specifier: workspace:*
+        version: link:../../packages/modules/conversations
+      '@enlace/integrations':
+        specifier: workspace:*
+        version: link:../../packages/modules/integrations
       '@enlace/knowledge':
         specifier: workspace:*
         version: link:../../packages/modules/knowledge

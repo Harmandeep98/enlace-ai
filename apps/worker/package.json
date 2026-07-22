@@ -13,6 +13,8 @@
   "dependencies": {
     "@enlace/ai-gateway": "workspace:*",
     "@enlace/knowledge": "workspace:*",
+    "@enlace/integrations": "workspace:*",
+    "@enlace/conversations": "workspace:*",
     "@enlace/temporal": "workspace:*",
     "@langchain/core": "^1.2.1",
     "@langchain/textsplitters": "^1.0.1",
