@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { createServer } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "@enlace/db";
 import { GeminiEmbeddingAdapter } from "@enlace/ai-gateway";
@@ -211,6 +212,70 @@ describe("Conversations routes", () => {
       expect(body.aiReply).not.toBeNull();
       expect(body.aiReply.resolutionPath).toBe("Retrieval");
       expect(body.aiReply.content.length).toBeGreaterThan(0);
+    },
+    30000
+  );
+
+  maybeIt(
+    "calls a workspace's configured webhook tool and answers using its result",
+    async () => {
+      const { workspace, channel } = await makeWorkspaceAndChannel();
+
+      let toolCallCount = 0;
+      const server = createServer((req, res) => {
+        let body = "";
+        req.on("data", (chunk) => (body += chunk));
+        req.on("end", () => {
+          const parsed = JSON.parse(body);
+          if (parsed.ping) {
+            res.writeHead(200);
+            res.end("ok");
+            return;
+          }
+          toolCallCount++;
+          res.writeHead(200, { "Content-Type": "text/plain" });
+          res.end("Order 12345 shipped yesterday and will arrive tomorrow.");
+        });
+      });
+      await new Promise<void>((resolve) => server.listen(0, resolve));
+      const address = server.address();
+      const webhookUrl = address && typeof address === "object" ? `http://127.0.0.1:${address.port}` : "";
+
+      const connectionRes = await app.request("/v1/integrations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: workspace.id,
+          type: "Webhook",
+          config: {
+            url: webhookUrl,
+            toolName: "get_order_status",
+            toolDescription: "Look up the shipping status of a customer's order by its order ID.",
+            toolParameters: { type: "object", properties: { orderId: { type: "string" } }, required: ["orderId"] }
+          },
+          credential: "test-hmac-secret"
+        })
+      });
+      expect(connectionRes.status).toBe(201);
+
+      const res = await app.request("/v1/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workspaceId: workspace.id,
+          channelId: channel.id,
+          customerRef: "customer-1",
+          message: "What's the status of order 12345?"
+        })
+      });
+
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(toolCallCount).toBeGreaterThan(0);
+      expect(body.aiReply).not.toBeNull();
+      expect(body.aiReply.content.length).toBeGreaterThan(0);
+
+      server.close();
     },
     30000
   );
