@@ -7,6 +7,7 @@ export { CreateIntegrationConnectionUseCase } from "./application/create-integra
 export { InvokeToolUseCase } from "./application/invoke-tool-use-case.js";
 
 export { PrismaIntegrationConnectionRepository } from "./infrastructure/prisma-integration-connection-repository.js";
+export { SlackAdapter } from "./infrastructure/slack-adapter.js";
 export { TemporalZendeskSyncTrigger } from "./infrastructure/temporal-zendesk-sync-trigger.js";
 export { WebhookAdapter } from "./infrastructure/webhook-adapter.js";
 export { ZendeskAdapter } from "./infrastructure/zendesk-adapter.js";
