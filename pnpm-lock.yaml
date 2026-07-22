@@ -282,6 +282,31 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.20.1)(terser@5.49.0)
 
+  packages/modules/integrations:
+    dependencies:
+      '@enlace/shared':
+        specifier: workspace:*
+        version: link:../../shared
+    devDependencies:
+      '@enlace/config':
+        specifier: workspace:*
+        version: link:../../config
+      '@enlace/db':
+        specifier: workspace:*
+        version: link:../../db
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.20.1
+      dotenv-cli:
+        specifier: ^7.4.0
+        version: 7.4.4
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)(terser@5.49.0)
+
   packages/modules/knowledge:
     dependencies:
       '@enlace/temporal':
