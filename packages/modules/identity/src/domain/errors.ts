@@ -11,3 +11,10 @@ export class WorkspaceSlugTakenError extends DomainError {
     super(`Workspace slug "${slug}" is already in use.`);
   }
 }
+
+export class WorkspaceAccessDeniedError extends DomainError {
+  readonly code = "workspace_access_denied";
+  constructor() {
+    super("You do not have access to this workspace.");
+  }
+}

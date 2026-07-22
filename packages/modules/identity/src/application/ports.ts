@@ -22,6 +22,7 @@ export interface CreateMembershipInput {
 export interface MembershipRepository {
   create(input: CreateMembershipInput): Promise<Membership>;
   findActiveOwnerEmail(workspaceId: string): Promise<string | undefined>;
+  findByUserAndWorkspace(workspaceId: string, userId: string): Promise<Membership | undefined>;
 }
 
 export interface AuthSignUpInput {

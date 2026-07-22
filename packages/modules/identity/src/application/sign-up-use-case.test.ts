@@ -38,6 +38,10 @@ class FakeMembershipRepository implements MembershipRepository {
   async findActiveOwnerEmail(): Promise<string | undefined> {
     return undefined;
   }
+
+  async findByUserAndWorkspace(): Promise<Membership | undefined> {
+    return undefined;
+  }
 }
 
 class FakeAuthPort implements AuthPort {

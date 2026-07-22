@@ -56,4 +56,17 @@ describe("PrismaMembershipRepository", () => {
 
     expect(email).toBeUndefined();
   });
+
+  it("findByUserAndWorkspace returns the membership when one exists, and undefined otherwise", async () => {
+    const user = await prisma.user.create({ data: { name: "Ada", email: `${randomUUID()}@example.com` } });
+    const workspace = await prisma.workspace.create({ data: { name: "Test Co", slug: `test-${randomUUID()}` } });
+    const created = await repo.create({ workspaceId: workspace.id, userId: user.id, role: "Owner" });
+
+    const found = await repo.findByUserAndWorkspace(workspace.id, user.id);
+    expect(found?.id).toBe(created.id);
+
+    const otherUser = await prisma.user.create({ data: { name: "Grace", email: `${randomUUID()}@example.com` } });
+    const notFound = await repo.findByUserAndWorkspace(workspace.id, otherUser.id);
+    expect(notFound).toBeUndefined();
+  });
 });
