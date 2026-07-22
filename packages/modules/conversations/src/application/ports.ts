@@ -52,6 +52,17 @@ export interface RetrievalPort {
   findBestMatches(workspaceId: string, message: string, k: number): Promise<{ content: string }[]>;
 }
 
+export interface ToolCall {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+}
+
+export interface ToolExchangeTurn {
+  toolCalls: ToolCall[];
+  results: { id: string; content: string }[];
+}
+
 // Consumer-defined structural port — Conversations has no dependency on @enlace/ai-gateway;
 // GoogleCompletionAdapter satisfies this structurally (its real CompletionResult has more
 // fields than {content: string}, but that's fine — a wider return type is always assignable
@@ -62,7 +73,9 @@ export interface CompletionPort {
     messages: { role: "user" | "assistant"; content: string }[];
     context: { content: string }[];
     tier: "small" | "large";
-  }): Promise<{ content: string; confidence: { score: number } }>;
+    tools?: { name: string; description: string; parameters: Record<string, unknown> }[];
+    priorToolExchanges?: ToolExchangeTurn[];
+  }): Promise<{ content: string; confidence: { score: number }; toolCalls?: ToolCall[] }>;
 }
 
 // Consumer-defined structural port, same pattern as FaqCachePort/CompletionPort — Conversations
@@ -70,4 +83,11 @@ export interface CompletionPort {
 // structurally, wired only at the composition root.
 export interface EscalationNotifierPort {
   notify(input: { workspaceId: string; conversationId: string; reason: EscalationReason }): Promise<void>;
+}
+
+// Consumer-defined structural port — Conversations has no dependency on @enlace/integrations;
+// InvokeToolUseCase satisfies this structurally, wired only at the composition root.
+export interface ToolInvokerPort {
+  listToolSchemas(workspaceId: string): Promise<{ name: string; description: string; parameters: Record<string, unknown> }[]>;
+  invoke(toolName: string, args: Record<string, unknown>, workspaceId: string): Promise<{ content: string }>;
 }

@@ -8,7 +8,10 @@ import type {
   FaqCachePort,
   RetrievalPort,
   SemanticCachePort,
-  StartConversationInput
+  StartConversationInput,
+  ToolCall,
+  ToolExchangeTurn,
+  ToolInvokerPort
 } from "./ports.js";
 import { AddMessageUseCase } from "./add-message-use-case.js";
 import { StartConversationUseCase } from "./start-conversation-use-case.js";
@@ -115,16 +118,45 @@ class FakeRetrievalPort implements RetrievalPort {
   }
 }
 
+type CompletionBehavior =
+  | { kind: "answer"; content: string; confidence?: { score: number } }
+  | { kind: "toolCall"; toolCalls: ToolCall[]; thenAnswer: string }
+  | { kind: "alwaysToolCall"; toolCalls: ToolCall[] }
+  | "throw";
+
 class FakeCompletionPort implements CompletionPort {
   public calls: Parameters<CompletionPort["complete"]>[0][] = [];
-  constructor(private readonly behavior: { content: string; confidence?: { score: number } } | "throw") {}
+  constructor(private readonly behavior: CompletionBehavior) {}
 
-  async complete(request: Parameters<CompletionPort["complete"]>[0]): Promise<{ content: string; confidence: { score: number } }> {
+  async complete(request: Parameters<CompletionPort["complete"]>[0]): Promise<{ content: string; confidence: { score: number }; toolCalls?: ToolCall[] }> {
     this.calls.push(request);
     if (this.behavior === "throw") {
       throw new Error("completion failed");
     }
+    if (this.behavior.kind === "alwaysToolCall") {
+      return { content: "", confidence: { score: 1 }, toolCalls: this.behavior.toolCalls };
+    }
+    if (this.behavior.kind === "toolCall") {
+      if (!request.priorToolExchanges || request.priorToolExchanges.length === 0) {
+        return { content: "", confidence: { score: 1 }, toolCalls: this.behavior.toolCalls };
+      }
+      return { content: this.behavior.thenAnswer, confidence: { score: 0.9 } };
+    }
     return { content: this.behavior.content, confidence: this.behavior.confidence ?? { score: 0.9 } };
+  }
+}
+
+class FakeToolInvokerPort implements ToolInvokerPort {
+  public invokeCalls: { toolName: string; args: Record<string, unknown>; workspaceId: string }[] = [];
+  constructor(private readonly schemas: { name: string; description: string; parameters: Record<string, unknown> }[], private readonly result: { content: string }) {}
+
+  async listToolSchemas(): Promise<{ name: string; description: string; parameters: Record<string, unknown> }[]> {
+    return this.schemas;
+  }
+
+  async invoke(toolName: string, args: Record<string, unknown>, workspaceId: string): Promise<{ content: string }> {
+    this.invokeCalls.push({ toolName, args, workspaceId });
+    return this.result;
   }
 }
 
@@ -140,7 +172,9 @@ function buildUseCase(options: {
   faqMatch?: { answer: string };
   semanticMatch?: { answer: string };
   retrievedChunks?: { content: string }[];
-  completionResult?: { content: string; confidence?: { score: number } } | "throw";
+  completionBehavior?: CompletionBehavior;
+  toolSchemas?: { name: string; description: string; parameters: Record<string, unknown> }[];
+  toolResult?: { content: string };
 }) {
   const conversations = new FakeConversationRepository();
   const startConversationUseCase = new StartConversationUseCase(conversations);
@@ -148,7 +182,8 @@ function buildUseCase(options: {
   const faqCache = new FakeFaqCachePort(options.faqMatch);
   const semanticCache = new FakeSemanticCachePort(options.semanticMatch);
   const retrieval = new FakeRetrievalPort(options.retrievedChunks ?? []);
-  const completion = new FakeCompletionPort(options.completionResult ?? { content: "A composed answer." });
+  const completion = new FakeCompletionPort(options.completionBehavior ?? { kind: "answer", content: "A composed answer." });
+  const toolInvoker = new FakeToolInvokerPort(options.toolSchemas ?? [], options.toolResult ?? { content: "tool result" });
   const escalationNotifier = new FakeEscalationNotifierPort();
   const escalateConversationUseCase = new EscalateConversationUseCase(conversations, escalationNotifier);
   const useCase = new IncomingMessageUseCase(
@@ -159,9 +194,10 @@ function buildUseCase(options: {
     semanticCache,
     retrieval,
     completion,
-    escalateConversationUseCase
+    escalateConversationUseCase,
+    toolInvoker
   );
-  return { useCase, conversations, semanticCache, retrieval, completion, escalationNotifier };
+  return { useCase, conversations, semanticCache, retrieval, completion, escalationNotifier, toolInvoker };
 }
 
 describe("IncomingMessageUseCase", () => {
@@ -201,7 +237,7 @@ describe("IncomingMessageUseCase", () => {
     it("falls through to retrieval + completion when neither cache matches, and appends with resolutionPath Retrieval", async () => {
       const { useCase, retrieval, completion } = buildUseCase({
         retrievedChunks: [{ content: "Our business hours are 9am to 5pm." }],
-        completionResult: { content: "We're open 9am to 5pm." }
+        completionBehavior: { kind: "answer", content: "We're open 9am to 5pm." }
       });
 
       const result = await useCase.startConversation({
@@ -233,7 +269,7 @@ describe("IncomingMessageUseCase", () => {
     });
 
     it("returns aiReply: null when completion throws", async () => {
-      const { useCase } = buildUseCase({ completionResult: "throw" });
+      const { useCase } = buildUseCase({ completionBehavior: "throw" });
 
       const result = await useCase.startConversation({
         workspaceId: "workspace-1",
@@ -247,7 +283,7 @@ describe("IncomingMessageUseCase", () => {
 
     it("escalates and sends a placeholder reply when completion confidence is low", async () => {
       const { useCase, conversations, escalationNotifier } = buildUseCase({
-        completionResult: { content: "A shaky guess.", confidence: { score: 0.2 } }
+        completionBehavior: { kind: "answer", content: "A shaky guess.", confidence: { score: 0.2 } }
       });
 
       const result = await useCase.startConversation({
@@ -264,6 +300,47 @@ describe("IncomingMessageUseCase", () => {
       ]);
       expect(escalationNotifier.calls).toEqual([
         { workspaceId: "workspace-1", conversationId: result.conversation.id, reason: "LowConfidence" }
+      ]);
+    });
+
+    it("invokes a tool when the completion requests one, then answers using the tool's result", async () => {
+      const toolCall = { id: "call-1", name: "get_order_status", args: { orderId: "12345" } };
+      const { useCase, toolInvoker, completion } = buildUseCase({
+        toolSchemas: [{ name: "get_order_status", description: "desc", parameters: {} }],
+        toolResult: { content: "Your order shipped yesterday." },
+        completionBehavior: { kind: "toolCall", toolCalls: [toolCall], thenAnswer: "Your order shipped yesterday." }
+      });
+
+      const result = await useCase.startConversation({
+        workspaceId: "workspace-1",
+        channelId: "channel-1",
+        customerRef: "customer-1",
+        message: "What's the status of order 12345?"
+      });
+
+      expect(toolInvoker.invokeCalls).toEqual([{ toolName: "get_order_status", args: { orderId: "12345" }, workspaceId: "workspace-1" }]);
+      expect(result.aiReply?.content).toBe("Your order shipped yesterday.");
+      expect(result.aiReply?.resolutionPath).toBe("Retrieval");
+      expect(completion.calls[1]?.priorToolExchanges).toEqual([{ toolCalls: [toolCall], results: [{ id: "call-1", content: "Your order shipped yesterday." }] }]);
+    });
+
+    it("escalates with reason ToolFailure when the tool-call round cap is exceeded", async () => {
+      const toolCall = { id: "call-1", name: "get_order_status", args: {} };
+      const { useCase, conversations } = buildUseCase({
+        toolSchemas: [{ name: "get_order_status", description: "desc", parameters: {} }],
+        completionBehavior: { kind: "alwaysToolCall", toolCalls: [toolCall] }
+      });
+
+      const result = await useCase.startConversation({
+        workspaceId: "workspace-1",
+        channelId: "channel-1",
+        customerRef: "customer-1",
+        message: "What's the status of order 12345?"
+      });
+
+      expect(result.aiReply?.resolutionPath).toBe("Escalated");
+      expect(conversations.statusUpdates).toEqual([
+        { conversationId: result.conversation.id, workspaceId: "workspace-1", status: "Escalated", escalationReason: "ToolFailure" }
       ]);
     });
   });
@@ -292,7 +369,7 @@ describe("IncomingMessageUseCase", () => {
     it("falls through to retrieval + completion for a follow-up matching neither cache", async () => {
       const { useCase, conversations, completion } = buildUseCase({
         retrievedChunks: [{ content: "Refunds take 5-7 business days." }],
-        completionResult: { content: "Refunds take 5-7 business days to process." }
+        completionBehavior: { kind: "answer", content: "Refunds take 5-7 business days to process." }
       });
       const { conversation } = await conversations.create({
         workspaceId: "workspace-1",
@@ -310,7 +387,6 @@ describe("IncomingMessageUseCase", () => {
 
       expect(result.aiReply?.content).toBe("Refunds take 5-7 business days to process.");
       expect(result.aiReply?.resolutionPath).toBe("Retrieval");
-      // History includes the conversation's opening "Hi" message plus this follow-up.
       expect(completion.calls[0]?.messages).toEqual([
         { role: "user", content: "Hi" },
         { role: "user", content: "How long do refunds take?" }

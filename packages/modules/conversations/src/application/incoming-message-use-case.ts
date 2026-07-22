@@ -5,7 +5,9 @@
 // chunks are retrieved and a real answer is composed via AI Gateway's completion capability
 // (docs/superpowers/specs/2026-07-20-pipeline-retrieval-completion-design.md). When that
 // completion comes back low-confidence, escalate instead of sending it
-// (docs/superpowers/specs/2026-07-21-confidence-driven-escalation-design.md).
+// (docs/superpowers/specs/2026-07-21-confidence-driven-escalation-design.md). When it requests
+// a tool instead of answering, invoke it and feed the result back, bounded by
+// MAX_TOOL_CALL_ROUNDS (docs/superpowers/specs/2026-07-21-tool-calling-integrations-design.md).
 //
 // Only ever call addMessage() when the caller-supplied sender is "Customer" — an agent or the
 // AI's own reply shouldn't be checked against either cache. The route layer (apps/api) enforces
@@ -22,7 +24,9 @@ import type {
   FaqCachePort,
   RetrievalPort,
   SemanticCachePort,
-  StartConversationInput
+  StartConversationInput,
+  ToolExchangeTurn,
+  ToolInvokerPort
 } from "./ports.js";
 
 const MESSAGE_HISTORY_WINDOW = 10;
@@ -30,6 +34,7 @@ const RETRIEVAL_K = 3;
 // Mirrors @enlace/ai-gateway's ESCALATION_CONFIDENCE_THRESHOLD (0.6) — duplicated here since
 // Conversations must not import @enlace/ai-gateway directly (consumer-defined structural ports).
 const LOW_CONFIDENCE_THRESHOLD = 0.6;
+const MAX_TOOL_CALL_ROUNDS = 3;
 const ESCALATION_REPLY = "I'm connecting you with a member of our team who can help.";
 
 export interface StartConversationWithReplyResult extends StartConversationResult {
@@ -54,7 +59,8 @@ export class IncomingMessageUseCase {
     private readonly semanticCache: SemanticCachePort,
     private readonly retrieval: RetrievalPort,
     private readonly completion: CompletionPort,
-    private readonly escalateConversationUseCase: EscalateConversationUseCase
+    private readonly escalateConversationUseCase: EscalateConversationUseCase,
+    private readonly toolInvoker: ToolInvokerPort
   ) {}
 
   async startConversation(input: StartConversationInput): Promise<StartConversationWithReplyResult> {
@@ -102,36 +108,74 @@ export class IncomingMessageUseCase {
   private async retrieveAndComplete(conversationId: string, workspaceId: string, content: string): Promise<Message | null> {
     const history = await this.conversations.listMessages(conversationId, workspaceId, MESSAGE_HISTORY_WINDOW);
     const chunks = await this.retrieval.findBestMatches(workspaceId, content, RETRIEVAL_K);
+    const messages = history.map(toConversationMessage);
+    const tools = await this.toolInvoker.listToolSchemas(workspaceId);
 
-    let result: { content: string; confidence: { score: number } };
-    try {
-      result = await this.completion.complete({
-        workspaceId,
-        messages: history.map(toConversationMessage),
-        context: chunks,
-        tier: "small"
-      });
-    } catch {
-      return null;
-    }
+    const priorToolExchanges: ToolExchangeTurn[] = [];
 
-    if (result.confidence.score < LOW_CONFIDENCE_THRESHOLD) {
-      await this.escalateConversationUseCase.execute({ conversationId, workspaceId, reason: "LowConfidence" });
+    for (let round = 0; round <= MAX_TOOL_CALL_ROUNDS; round++) {
+      let result;
+      try {
+        result = await this.completion.complete({
+          workspaceId,
+          messages,
+          context: chunks,
+          tier: "small",
+          tools: tools.length > 0 ? tools : undefined,
+          priorToolExchanges: priorToolExchanges.length > 0 ? priorToolExchanges : undefined
+        });
+      } catch {
+        return null;
+      }
+
+      // A tool-call round is never a final answer — its confidence field is a meaningless
+      // placeholder. Check toolCalls before ever looking at confidence.
+      if (result.toolCalls && result.toolCalls.length > 0) {
+        if (round === MAX_TOOL_CALL_ROUNDS) {
+          await this.escalateConversationUseCase.execute({ conversationId, workspaceId, reason: "ToolFailure" });
+          return this.conversations.appendMessage({
+            conversationId,
+            workspaceId,
+            sender: "AI",
+            content: ESCALATION_REPLY,
+            resolutionPath: "Escalated"
+          });
+        }
+
+        const results = await Promise.all(
+          result.toolCalls.map(async (toolCall) => {
+            try {
+              const toolResult = await this.toolInvoker.invoke(toolCall.name, toolCall.args, workspaceId);
+              return { id: toolCall.id, content: toolResult.content };
+            } catch (error) {
+              return { id: toolCall.id, content: `Error: ${error instanceof Error ? error.message : "tool invocation failed"}` };
+            }
+          })
+        );
+        priorToolExchanges.push({ toolCalls: result.toolCalls, results });
+        continue;
+      }
+
+      if (result.confidence.score < LOW_CONFIDENCE_THRESHOLD) {
+        await this.escalateConversationUseCase.execute({ conversationId, workspaceId, reason: "LowConfidence" });
+        return this.conversations.appendMessage({
+          conversationId,
+          workspaceId,
+          sender: "AI",
+          content: ESCALATION_REPLY,
+          resolutionPath: "Escalated"
+        });
+      }
+
       return this.conversations.appendMessage({
         conversationId,
         workspaceId,
         sender: "AI",
-        content: ESCALATION_REPLY,
-        resolutionPath: "Escalated"
+        content: result.content,
+        resolutionPath: "Retrieval"
       });
     }
 
-    return this.conversations.appendMessage({
-      conversationId,
-      workspaceId,
-      sender: "AI",
-      content: result.content,
-      resolutionPath: "Retrieval"
-    });
+    return null;
   }
 }
