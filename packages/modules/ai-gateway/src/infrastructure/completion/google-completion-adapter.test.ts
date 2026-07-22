@@ -103,4 +103,43 @@ describe("GoogleCompletionAdapter", () => {
     const fullContent = chunks.map((c) => c.contentDelta).join("");
     expect(fullContent.length).toBeGreaterThan(0);
   }, 30000);
+
+  maybeIt(
+    "calls a bound tool when the question needs it, then answers using the tool's result",
+    async () => {
+      const { adapter } = buildAdapter();
+      const tools = [
+        {
+          name: "get_current_time",
+          description: "Returns the current time in a given city.",
+          parameters: { type: "object", properties: { city: { type: "string" } }, required: ["city"] }
+        }
+      ];
+
+      const firstResult = await adapter.complete({
+        workspaceId: "ws-1",
+        messages: [{ role: "user", content: "What time is it in Tokyo right now?" }],
+        context: [],
+        tier: "small",
+        tools
+      });
+
+      expect(firstResult.toolCalls?.length).toBeGreaterThan(0);
+      const toolCall = firstResult.toolCalls![0]!;
+      expect(toolCall.name).toBe("get_current_time");
+
+      const secondResult = await adapter.complete({
+        workspaceId: "ws-1",
+        messages: [{ role: "user", content: "What time is it in Tokyo right now?" }],
+        context: [],
+        tier: "small",
+        tools,
+        priorToolExchanges: [{ toolCalls: firstResult.toolCalls!, results: [{ id: toolCall.id, content: "It is 14:00 in Tokyo." }] }]
+      });
+
+      expect(secondResult.toolCalls).toBeUndefined();
+      expect(secondResult.content.length).toBeGreaterThan(0);
+    },
+    30000
+  );
 });

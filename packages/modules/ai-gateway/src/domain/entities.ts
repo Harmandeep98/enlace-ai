@@ -24,6 +24,27 @@ export interface ConversationMessage {
   content: string;
 }
 
+export interface ToolSchema {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+}
+
+export interface ToolCall {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+  // Gemini requires this echoed back verbatim on the next turn's function-call part, or it
+  // 400s ("missing thought_signature"). Optional/opaque since only this provider needs it —
+  // callers that just relay a ToolCall (Conversations' bounded loop) never need to read it.
+  thoughtSignature?: string;
+}
+
+export interface ToolExchangeTurn {
+  toolCalls: ToolCall[];
+  results: { id: string; content: string }[];
+}
+
 export interface ConfidenceSignal {
   score: number;
   usedContext: boolean;
@@ -41,6 +62,8 @@ export interface CompletionRequest {
   messages: ConversationMessage[];
   context: RetrievedChunk[];
   tier: Tier;
+  tools?: ToolSchema[];
+  priorToolExchanges?: ToolExchangeTurn[];
 }
 
 export interface CompletionResult {
@@ -49,6 +72,7 @@ export interface CompletionResult {
   usage: CompletionUsage;
   provider: Provider;
   model: string;
+  toolCalls?: ToolCall[];
 }
 
 export interface CompletionChunk {
