@@ -1,7 +1,7 @@
 // docs/07-api-design.md §5 — one error-mapping table, not per-route ad hoc handling.
 import type { Context } from "hono";
 import { DomainError } from "@enlace/shared";
-import { WorkspaceSlugTakenError } from "@enlace/identity";
+import { WorkspaceAccessDeniedError, WorkspaceSlugTakenError } from "@enlace/identity";
 import { ConversationNotFoundError, ConversationNotOpenError, EscalationReasonRequiredError } from "@enlace/conversations";
 import {
   CredentialRequiredError,
@@ -13,6 +13,7 @@ import type { AppEnv } from "../types.js";
 
 const errorStatusMap = new Map<new (...args: never[]) => DomainError, number>([
   [WorkspaceSlugTakenError, 409],
+  [WorkspaceAccessDeniedError, 403],
   [ConversationNotOpenError, 409],
   [EscalationReasonRequiredError, 400],
   [ConversationNotFoundError, 404],
@@ -25,7 +26,7 @@ const errorStatusMap = new Map<new (...args: never[]) => DomainError, number>([
 export function mapDomainErrorToResponse(error: unknown, c: Context<AppEnv>) {
   if (error instanceof DomainError) {
     const status = [...errorStatusMap.entries()].find(([ctor]) => error instanceof ctor)?.[1] ?? 400;
-    return c.json({ error: { code: error.code, message: error.message, requestId: c.get("requestId") } }, status as 400 | 404 | 409);
+    return c.json({ error: { code: error.code, message: error.message, requestId: c.get("requestId") } }, status as 400 | 403 | 404 | 409);
   }
   return c.json({ error: { code: "internal_error", message: "Something went wrong.", requestId: c.get("requestId") } }, 500);
 }

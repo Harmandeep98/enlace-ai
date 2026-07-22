@@ -23,6 +23,7 @@ integrationRoutes.post("/v1/integrations", async (c) => {
   }
 
   try {
+    await container.verifyWorkspaceMembershipUseCase.execute(c.get("userId"), parsed.data.workspaceId);
     const connection = await container.createIntegrationConnectionUseCase.execute(parsed.data);
     return c.json({ connection }, 201);
   } catch (error) {

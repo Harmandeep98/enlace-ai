@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "@enlace/db";
+import { PrismaMembershipRepository } from "@enlace/identity";
 import { GeminiEmbeddingAdapter } from "@enlace/ai-gateway";
 import { PrismaDocumentChunkRepository, PrismaKnowledgeSourceRepository } from "@enlace/knowledge";
 import { buildApp } from "../server.js";
@@ -33,8 +34,8 @@ describe("Conversations routes", () => {
       await tx.$executeRaw`SELECT set_config('app.workspace_id', ${workspace.id}, true)`;
       return tx.channelConnection.create({ data: { workspaceId: workspace.id, type: "Widget" } });
     });
-    const { cookie } = await createAuthenticatedSession(app, workspace.id);
-    return { workspace, channel, cookie };
+    const { cookie, userId } = await createAuthenticatedSession(app, workspace.id);
+    return { workspace, channel, cookie, userId };
   }
 
   async function makeFaq(workspaceId: string, question: string, answer: string) {
@@ -166,10 +167,36 @@ describe("Conversations routes", () => {
   );
 
   it(
-    "GET /v1/conversations/:id returns 404 for a workspace that doesn't own it",
+    "GET /v1/conversations/:id returns 403 for a workspace the caller has no membership in",
     async () => {
       const { workspace, channel, cookie } = await makeWorkspaceAndChannel();
       const otherWorkspace = await prisma.workspace.create({ data: { name: "Other Co", slug: `test-${randomUUID()}` } });
+      const startRes = await app.request("/v1/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: cookie },
+        body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi." })
+      });
+      const { conversation } = await startRes.json();
+
+      const res = await app.request(`/v1/conversations/${conversation.id}?workspaceId=${otherWorkspace.id}`, {
+        headers: { Cookie: cookie }
+      });
+      // The caller has no membership at all in otherWorkspace, so the membership check now
+      // rejects before the conversation lookup ever runs — this doesn't even leak whether a
+      // conversation exists there. The genuinely-a-member-but-wrong-workspace 404 case is
+      // covered by the next test.
+      expect(res.status).toBe(403);
+    },
+    30000
+  );
+
+  it(
+    "GET /v1/conversations/:id returns 404 when the caller belongs to the queried workspace but the conversation doesn't",
+    async () => {
+      const { workspace, channel, cookie, userId } = await makeWorkspaceAndChannel();
+      const otherWorkspace = await prisma.workspace.create({ data: { name: "Other Co", slug: `test-${randomUUID()}` } });
+      await new PrismaMembershipRepository().create({ workspaceId: otherWorkspace.id, userId, role: "Owner" });
+
       const startRes = await app.request("/v1/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json", Cookie: cookie },

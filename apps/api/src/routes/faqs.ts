@@ -20,6 +20,7 @@ faqRoutes.post("/v1/faqs", async (c) => {
   }
 
   try {
+    await container.verifyWorkspaceMembershipUseCase.execute(c.get("userId"), parsed.data.workspaceId);
     const faq = await container.createFaqUseCase.execute(parsed.data);
     return c.json({ faq }, 201);
   } catch (error) {
@@ -34,6 +35,7 @@ faqRoutes.get("/v1/faqs", async (c) => {
   }
 
   try {
+    await container.verifyWorkspaceMembershipUseCase.execute(c.get("userId"), workspaceId);
     const faqs = await container.listFaqsUseCase.execute({ workspaceId });
     return c.json({ faqs }, 200);
   } catch (error) {

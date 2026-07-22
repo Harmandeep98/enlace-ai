@@ -33,6 +33,7 @@ aiGatewayRoutes.post("/v1/provider-configs", async (c) => {
   }
 
   try {
+    await container.verifyWorkspaceMembershipUseCase.execute(c.get("userId"), parsed.data.workspaceId);
     const config = await container.configureProviderUseCase.execute(parsed.data);
     return c.json({ config }, 201);
   } catch (error) {
@@ -47,6 +48,7 @@ aiGatewayRoutes.get("/v1/provider-configs", async (c) => {
   }
 
   try {
+    await container.verifyWorkspaceMembershipUseCase.execute(c.get("userId"), workspaceId);
     const configs = await container.listProviderConfigsUseCase.execute(workspaceId);
     return c.json({ configs }, 200);
   } catch (error) {
@@ -61,6 +63,7 @@ aiGatewayRoutes.post("/v1/provider-configs/:id/rotate", async (c) => {
   }
 
   try {
+    await container.verifyWorkspaceMembershipUseCase.execute(c.get("userId"), parsed.data.workspaceId);
     const config = await container.rotateProviderKeyUseCase.execute({
       configId: c.req.param("id"),
       workspaceId: parsed.data.workspaceId,
@@ -79,6 +82,7 @@ aiGatewayRoutes.post("/v1/provider-configs/:id/disable", async (c) => {
   }
 
   try {
+    await container.verifyWorkspaceMembershipUseCase.execute(c.get("userId"), parsed.data.workspaceId);
     await container.disableProviderConfigUseCase.execute(c.req.param("id"), parsed.data.workspaceId);
     return c.json({ ok: true }, 200);
   } catch (error) {

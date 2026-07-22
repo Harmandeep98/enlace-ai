@@ -23,6 +23,7 @@ knowledgeSourceRoutes.post("/v1/knowledge-sources", async (c) => {
   }
 
   try {
+    await container.verifyWorkspaceMembershipUseCase.execute(c.get("userId"), parsed.data.workspaceId);
     const source = await container.createKnowledgeSourceUseCase.execute(parsed.data);
     return c.json({ source }, 201);
   } catch (error) {
@@ -37,6 +38,7 @@ knowledgeSourceRoutes.get("/v1/knowledge-sources", async (c) => {
   }
 
   try {
+    await container.verifyWorkspaceMembershipUseCase.execute(c.get("userId"), workspaceId);
     const sources = await container.listKnowledgeSourcesUseCase.execute({ workspaceId });
     return c.json({ sources }, 200);
   } catch (error) {

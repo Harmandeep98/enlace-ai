@@ -32,6 +32,7 @@ conversationRoutes.post("/v1/conversations", async (c) => {
   }
 
   try {
+    await container.verifyWorkspaceMembershipUseCase.execute(c.get("userId"), parsed.data.workspaceId);
     const result = await container.incomingMessageUseCase.startConversation(parsed.data);
     return c.json(result, 201);
   } catch (error) {
@@ -46,6 +47,7 @@ conversationRoutes.post("/v1/conversations/:id/messages", async (c) => {
   }
 
   try {
+    await container.verifyWorkspaceMembershipUseCase.execute(c.get("userId"), parsed.data.workspaceId);
     // Only customer-authored messages get FAQ-checked (docs/superpowers/specs/2026-07-17-faq-cache-design.md
     // §5) — an agent's or the AI's own reply doesn't need its own message checked against the cache.
     if (parsed.data.sender === "Customer") {
@@ -66,6 +68,7 @@ conversationRoutes.post("/v1/conversations/:id/escalate", async (c) => {
   }
 
   try {
+    await container.verifyWorkspaceMembershipUseCase.execute(c.get("userId"), parsed.data.workspaceId);
     const conversation = await container.escalateConversationUseCase.execute({ conversationId: c.req.param("id"), ...parsed.data });
     return c.json({ conversation }, 200);
   } catch (error) {
@@ -80,6 +83,7 @@ conversationRoutes.get("/v1/conversations/:id", async (c) => {
   }
 
   try {
+    await container.verifyWorkspaceMembershipUseCase.execute(c.get("userId"), workspaceId);
     const conversation = await container.getConversationUseCase.execute({ conversationId: c.req.param("id"), workspaceId });
     return c.json({ conversation }, 200);
   } catch (error) {

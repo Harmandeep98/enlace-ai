@@ -51,4 +51,18 @@ describe("FAQ routes", () => {
     expect(body.faqs).toHaveLength(1);
     expect(body.faqs[0].answer).toBe("9am-5pm Mon-Fri.");
   });
+
+  it("enforces the 401 -> 403 -> 200 ladder for a real route", async () => {
+    const { workspace, cookie } = await makeWorkspace();
+
+    const noSession = await app.request(`/v1/faqs?workspaceId=${workspace.id}`);
+    expect(noSession.status).toBe(401);
+
+    const otherWorkspace = await prisma.workspace.create({ data: { name: "Other Co", slug: `test-${randomUUID()}` } });
+    const wrongWorkspace = await app.request(`/v1/faqs?workspaceId=${otherWorkspace.id}`, { headers: { Cookie: cookie } });
+    expect(wrongWorkspace.status).toBe(403);
+
+    const correctWorkspace = await app.request(`/v1/faqs?workspaceId=${workspace.id}`, { headers: { Cookie: cookie } });
+    expect(correctWorkspace.status).toBe(200);
+  });
 });
