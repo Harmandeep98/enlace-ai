@@ -1,10 +1,10 @@
-import { IntegrationConnectionNotFoundError, NoAdapterRegisteredError } from "../domain/errors.js";
+import { IntegrationConnectionNotFoundError } from "../domain/errors.js";
 import type { IntegrationType, ToolSchema } from "../domain/entities.js";
 import type { IntegrationAdapter, IntegrationConnectionRepository } from "./ports.js";
 
-// Webhook-only for now (Plan 1 of 3) — Slack/Zendesk have no adapter registered yet, so
-// listToolSchemas/invoke both only ever resolve a workspace's Webhook connection.
-const TOOL_CALLING_TYPE: IntegrationType = "Webhook";
+// Every type that can offer tools to the model — Slack is deliberately excluded (send-only for
+// escalation, per docs/14-integration-architecture.md §4, never a tool-calling participant).
+const TOOL_CALLING_TYPES: IntegrationType[] = ["Webhook", "Zendesk"];
 
 export class InvokeToolUseCase {
   constructor(
@@ -13,22 +13,30 @@ export class InvokeToolUseCase {
   ) {}
 
   async listToolSchemas(workspaceId: string): Promise<ToolSchema[]> {
-    const connection = await this.connections.findByWorkspaceAndType(workspaceId, TOOL_CALLING_TYPE);
-    if (!connection) return [];
-    const adapter = this.adapters[TOOL_CALLING_TYPE];
-    if (!adapter) return [];
-    return adapter.getToolSchemas(connection.config);
+    const schemas: ToolSchema[] = [];
+    for (const type of TOOL_CALLING_TYPES) {
+      const adapter = this.adapters[type];
+      if (!adapter) continue;
+      const connection = await this.connections.findByWorkspaceAndType(workspaceId, type);
+      if (!connection) continue;
+      schemas.push(...adapter.getToolSchemas(connection.config));
+    }
+    return schemas;
   }
 
-  async invoke(toolName: string, args: Record<string, unknown>, workspaceId: string): Promise<{ content: string }> {
-    const connection = await this.connections.findByWorkspaceAndType(workspaceId, TOOL_CALLING_TYPE);
-    if (!connection) throw new IntegrationConnectionNotFoundError();
+  async invoke(toolName: string, args: Record<string, unknown>, workspaceId: string, conversationId: string): Promise<{ content: string }> {
+    for (const type of TOOL_CALLING_TYPES) {
+      const adapter = this.adapters[type];
+      if (!adapter) continue;
+      const connection = await this.connections.findByWorkspaceAndType(workspaceId, type);
+      if (!connection) continue;
+      const offersThisTool = adapter.getToolSchemas(connection.config).some((schema) => schema.name === toolName);
+      if (!offersThisTool) continue;
 
-    const adapter = this.adapters[TOOL_CALLING_TYPE];
-    if (!adapter) throw new NoAdapterRegisteredError(TOOL_CALLING_TYPE);
-
-    const credential = await this.connections.getDecryptedCredential(connection.id, workspaceId);
-    const result = await adapter.invokeTool(toolName, args, connection.config, credential);
-    return { content: result.content };
+      const credential = await this.connections.getDecryptedCredential(connection.id, workspaceId);
+      const result = await adapter.invokeTool(toolName, args, connection.config, credential, { conversationId });
+      return { content: result.content };
+    }
+    throw new IntegrationConnectionNotFoundError();
   }
 }

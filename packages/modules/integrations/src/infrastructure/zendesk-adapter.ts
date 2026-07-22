@@ -43,7 +43,7 @@ function authHeader(config: ZendeskConfig, credential: string): string {
 export class ZendeskAdapter implements IntegrationAdapter {
   readonly type = "Zendesk" as const;
 
-  getToolSchemas(): ToolSchema[] {
+  getToolSchemas(_config: unknown): ToolSchema[] {
     return [
       {
         name: "create_zendesk_ticket",
