@@ -1,5 +1,5 @@
 // docs/04-folder-structure.md §3 — the one place in apps/api allowed to import infrastructure directly.
-import { BetterAuthAdapter, PrismaMembershipRepository, PrismaWorkspaceRepository, SignUpUseCase } from "@enlace/identity";
+import { BetterAuthAdapter, PrismaMembershipRepository, PrismaWorkspaceRepository, SignUpUseCase, VerifyWorkspaceMembershipUseCase } from "@enlace/identity";
 import { PrismaChannelRepository } from "@enlace/channels";
 import {
   CheckCostCeilingUseCase,
@@ -49,6 +49,7 @@ import {
 function buildContainer() {
   const workspaceRepository = new PrismaWorkspaceRepository();
   const membershipRepository = new PrismaMembershipRepository();
+  const verifyWorkspaceMembershipUseCase = new VerifyWorkspaceMembershipUseCase(membershipRepository);
   const smtpEscalationNotifier = new SmtpEscalationNotifierAdapter(membershipRepository, {
     host: process.env.SMTP_HOST ?? "",
     port: Number(process.env.SMTP_PORT ?? 587),
@@ -102,6 +103,7 @@ function buildContainer() {
     createKnowledgeSourceUseCase: new CreateKnowledgeSourceUseCase(knowledgeSourceRepository, ingestionTrigger),
     listKnowledgeSourcesUseCase: new ListKnowledgeSourcesUseCase(knowledgeSourceRepository),
     createIntegrationConnectionUseCase,
+    verifyWorkspaceMembershipUseCase,
     incomingMessageUseCase: new IncomingMessageUseCase(
       startConversationUseCase,
       addMessageUseCase,

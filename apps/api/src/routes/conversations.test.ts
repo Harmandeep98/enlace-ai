@@ -5,6 +5,7 @@ import { prisma } from "@enlace/db";
 import { GeminiEmbeddingAdapter } from "@enlace/ai-gateway";
 import { PrismaDocumentChunkRepository, PrismaKnowledgeSourceRepository } from "@enlace/knowledge";
 import { buildApp } from "../server.js";
+import { createAuthenticatedSession } from "../test-support/auth.js";
 
 describe("Conversations routes", () => {
   const app = buildApp();
@@ -13,9 +14,14 @@ describe("Conversations routes", () => {
     await prisma.message.deleteMany();
     await prisma.conversation.deleteMany();
     await prisma.channelConnection.deleteMany();
+    await prisma.integrationConnection.deleteMany();
     await prisma.faqEntry.deleteMany();
     await prisma.documentChunk.deleteMany();
     await prisma.knowledgeSource.deleteMany();
+    await prisma.membership.deleteMany();
+    await prisma.session.deleteMany();
+    await prisma.account.deleteMany();
+    await prisma.user.deleteMany();
     await prisma.workspace.deleteMany();
   });
 
@@ -27,7 +33,8 @@ describe("Conversations routes", () => {
       await tx.$executeRaw`SELECT set_config('app.workspace_id', ${workspace.id}, true)`;
       return tx.channelConnection.create({ data: { workspaceId: workspace.id, type: "Widget" } });
     });
-    return { workspace, channel };
+    const { cookie } = await createAuthenticatedSession(app, workspace.id);
+    return { workspace, channel, cookie };
   }
 
   async function makeFaq(workspaceId: string, question: string, answer: string) {
@@ -40,11 +47,11 @@ describe("Conversations routes", () => {
   it(
     "POST /v1/conversations starts a conversation with the first message",
     async () => {
-      const { workspace, channel } = await makeWorkspaceAndChannel();
+      const { workspace, channel, cookie } = await makeWorkspaceAndChannel();
 
       const res = await app.request("/v1/conversations", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Cookie: cookie },
         body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi, I need help." })
       });
 
@@ -62,12 +69,12 @@ describe("Conversations routes", () => {
   );
 
   it("POST /v1/conversations returns an FAQ-matched aiReply when the first message matches", async () => {
-    const { workspace, channel } = await makeWorkspaceAndChannel();
+    const { workspace, channel, cookie } = await makeWorkspaceAndChannel();
     await makeFaq(workspace.id, "What are your business hours", "We're open 9am-5pm Mon-Fri.");
 
     const res = await app.request("/v1/conversations", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Cookie: cookie },
       body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "What are your business hours" })
     });
 
@@ -81,17 +88,17 @@ describe("Conversations routes", () => {
   it(
     "POST /v1/conversations/:id/messages appends a message",
     async () => {
-      const { workspace, channel } = await makeWorkspaceAndChannel();
+      const { workspace, channel, cookie } = await makeWorkspaceAndChannel();
       const startRes = await app.request("/v1/conversations", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Cookie: cookie },
         body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi." })
       });
       const { conversation } = await startRes.json();
 
       const res = await app.request(`/v1/conversations/${conversation.id}/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Cookie: cookie },
         body: JSON.stringify({ workspaceId: workspace.id, sender: "Human", content: "How can I help?" })
       });
 
@@ -105,18 +112,18 @@ describe("Conversations routes", () => {
   it(
     "POST /v1/conversations/:id/messages returns an FAQ-matched aiReply for a matching customer follow-up",
     async () => {
-      const { workspace, channel } = await makeWorkspaceAndChannel();
+      const { workspace, channel, cookie } = await makeWorkspaceAndChannel();
       await makeFaq(workspace.id, "How do I reset my password", "Use the 'Forgot password' link on the login page.");
       const startRes = await app.request("/v1/conversations", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Cookie: cookie },
         body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi." })
       });
       const { conversation } = await startRes.json();
 
       const res = await app.request(`/v1/conversations/${conversation.id}/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Cookie: cookie },
         body: JSON.stringify({ workspaceId: workspace.id, sender: "Customer", content: "How do I reset my password" })
       });
 
@@ -131,24 +138,24 @@ describe("Conversations routes", () => {
   it(
     "POST /v1/conversations/:id/escalate transitions status and rejects a missing reason",
     async () => {
-      const { workspace, channel } = await makeWorkspaceAndChannel();
+      const { workspace, channel, cookie } = await makeWorkspaceAndChannel();
       const startRes = await app.request("/v1/conversations", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Cookie: cookie },
         body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi." })
       });
       const { conversation } = await startRes.json();
 
       const missingReason = await app.request(`/v1/conversations/${conversation.id}/escalate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Cookie: cookie },
         body: JSON.stringify({ workspaceId: workspace.id })
       });
       expect(missingReason.status).toBe(400);
 
       const res = await app.request(`/v1/conversations/${conversation.id}/escalate`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Cookie: cookie },
         body: JSON.stringify({ workspaceId: workspace.id, reason: "LowConfidence" })
       });
       expect(res.status).toBe(200);
@@ -161,16 +168,18 @@ describe("Conversations routes", () => {
   it(
     "GET /v1/conversations/:id returns 404 for a workspace that doesn't own it",
     async () => {
-      const { workspace, channel } = await makeWorkspaceAndChannel();
+      const { workspace, channel, cookie } = await makeWorkspaceAndChannel();
       const otherWorkspace = await prisma.workspace.create({ data: { name: "Other Co", slug: `test-${randomUUID()}` } });
       const startRes = await app.request("/v1/conversations", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Cookie: cookie },
         body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi." })
       });
       const { conversation } = await startRes.json();
 
-      const res = await app.request(`/v1/conversations/${conversation.id}?workspaceId=${otherWorkspace.id}`);
+      const res = await app.request(`/v1/conversations/${conversation.id}?workspaceId=${otherWorkspace.id}`, {
+        headers: { Cookie: cookie }
+      });
       expect(res.status).toBe(404);
     },
     30000
@@ -183,7 +192,7 @@ describe("Conversations routes", () => {
   maybeIt(
     "returns a real retrieval-grounded AI reply when no cache matches",
     async () => {
-      const { workspace, channel } = await makeWorkspaceAndChannel();
+      const { workspace, channel, cookie } = await makeWorkspaceAndChannel();
 
       const sourceRepo = new PrismaKnowledgeSourceRepository();
       const embeddingAdapter = new GeminiEmbeddingAdapter();
@@ -198,7 +207,7 @@ describe("Conversations routes", () => {
 
       const res = await app.request("/v1/conversations", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Cookie: cookie },
         body: JSON.stringify({
           workspaceId: workspace.id,
           channelId: channel.id,
@@ -219,7 +228,7 @@ describe("Conversations routes", () => {
   maybeIt(
     "calls a workspace's configured webhook tool and answers using its result",
     async () => {
-      const { workspace, channel } = await makeWorkspaceAndChannel();
+      const { workspace, channel, cookie } = await makeWorkspaceAndChannel();
 
       let toolCallCount = 0;
       const server = createServer((req, res) => {
@@ -243,7 +252,7 @@ describe("Conversations routes", () => {
 
       const connectionRes = await app.request("/v1/integrations", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Cookie: cookie },
         body: JSON.stringify({
           workspaceId: workspace.id,
           type: "Webhook",
@@ -260,7 +269,7 @@ describe("Conversations routes", () => {
 
       const res = await app.request("/v1/conversations", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Cookie: cookie },
         body: JSON.stringify({
           workspaceId: workspace.id,
           channelId: channel.id,
@@ -281,7 +290,7 @@ describe("Conversations routes", () => {
   );
 
   it("fans an escalation out to a workspace's configured Slack channel", async () => {
-    const { workspace, channel } = await makeWorkspaceAndChannel();
+    const { workspace, channel, cookie } = await makeWorkspaceAndChannel();
 
     const receivedBodies: string[] = [];
     const server = createServer((req, res) => {
@@ -299,32 +308,31 @@ describe("Conversations routes", () => {
 
     const connectionRes = await app.request("/v1/integrations", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Cookie: cookie },
       body: JSON.stringify({ workspaceId: workspace.id, type: "Slack", config: { webhookUrl: slackWebhookUrl } })
     });
     expect(connectionRes.status).toBe(201);
 
     const startRes = await app.request("/v1/conversations", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Cookie: cookie },
       body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi." })
     });
     const { conversation } = await startRes.json();
 
     const escalateRes = await app.request(`/v1/conversations/${conversation.id}/escalate`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Cookie: cookie },
       body: JSON.stringify({ workspaceId: workspace.id, reason: "CustomerRequest" })
     });
     expect(escalateRes.status).toBe(200);
 
     // receivedBodies always includes validateConfig's connection-test ping (fired when the
     // Slack connection was created) first. It may also include an earlier real-Gemini
-    // confidence-driven auto-escalation notification (docs/superpowers/specs/
-    // 2026-07-21-confidence-driven-escalation-design.md) if the "Hi." message's completion
-    // happened to score below the confidence threshold — genuine real-API non-determinism, not
-    // a bug in this test. Assert on the specific escalation notification this test triggered
-    // (tagged with its own reason) rather than the exact call count or position.
+    // confidence-driven auto-escalation notification if the "Hi." message's completion happened
+    // to score below the confidence threshold — genuine real-API non-determinism, not a bug in
+    // this test. Assert on the specific escalation notification this test triggered (tagged with
+    // its own reason) rather than the exact call count or position.
     const escalationBody = receivedBodies.map((body) => JSON.parse(body)).find((parsed) => parsed.text?.includes("CustomerRequest"));
     expect(escalationBody).toBeDefined();
     expect(escalationBody.text).toContain(conversation.id);

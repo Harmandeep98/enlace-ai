@@ -10,6 +10,8 @@ import { aiGatewayRoutes } from "./routes/ai-gateway.js";
 import { integrationRoutes } from "./routes/integrations.js";
 import type { AppEnv } from "./types.js";
 
+const PUBLIC_PATHS = ["/health", "/v1/signup"];
+
 export function buildApp() {
   const app = new Hono<AppEnv>();
   app.use("*", async (c, next) => {
@@ -23,6 +25,17 @@ export function buildApp() {
       credentials: true
     })
   );
+  app.use("*", async (c, next) => {
+    if (PUBLIC_PATHS.includes(c.req.path) || c.req.path.startsWith("/api/auth/")) {
+      return next();
+    }
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    if (!session) {
+      return c.json({ error: { code: "unauthorized", message: "Sign in required.", requestId: c.get("requestId") } }, 401);
+    }
+    c.set("userId", session.user.id);
+    await next();
+  });
   app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
   app.get("/health", (c) => c.json({ ok: true }));
   app.route("/", identityRoutes);

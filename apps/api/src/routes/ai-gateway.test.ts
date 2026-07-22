@@ -2,25 +2,32 @@ import { randomUUID } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "@enlace/db";
 import { buildApp } from "../server.js";
+import { createAuthenticatedSession } from "../test-support/auth.js";
 
 describe("ai-gateway routes", () => {
   const app = buildApp();
 
   afterEach(async () => {
     await prisma.providerConfig.deleteMany();
+    await prisma.membership.deleteMany();
+    await prisma.session.deleteMany();
+    await prisma.account.deleteMany();
+    await prisma.user.deleteMany();
     await prisma.workspace.deleteMany();
   });
 
   async function makeWorkspace() {
-    return prisma.workspace.create({ data: { name: "Test Co", slug: `test-${randomUUID()}` } });
+    const workspace = await prisma.workspace.create({ data: { name: "Test Co", slug: `test-${randomUUID()}` } });
+    const { cookie } = await createAuthenticatedSession(app, workspace.id);
+    return { workspace, cookie };
   }
 
   it("configures a Platform+Google provider with no credential", async () => {
-    const workspace = await makeWorkspace();
+    const { workspace, cookie } = await makeWorkspace();
 
     const res = await app.request("/v1/provider-configs", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Cookie: cookie },
       body: JSON.stringify({ workspaceId: workspace.id, provider: "Google", keyMode: "Platform" })
     });
 
@@ -30,11 +37,11 @@ describe("ai-gateway routes", () => {
   });
 
   it("rejects Platform mode for a non-Google provider with 400", async () => {
-    const workspace = await makeWorkspace();
+    const { workspace, cookie } = await makeWorkspace();
 
     const res = await app.request("/v1/provider-configs", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Cookie: cookie },
       body: JSON.stringify({ workspaceId: workspace.id, provider: "OpenAI", keyMode: "Platform" })
     });
 
@@ -42,11 +49,11 @@ describe("ai-gateway routes", () => {
   });
 
   it("rejects a BringYourOwn config with an invalid credential with 400, and persists nothing", async () => {
-    const workspace = await makeWorkspace();
+    const { workspace, cookie } = await makeWorkspace();
 
     const res = await app.request("/v1/provider-configs", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Cookie: cookie },
       body: JSON.stringify({ workspaceId: workspace.id, provider: "OpenAI", keyMode: "BringYourOwn", credential: "sk-invalid" })
     });
 
@@ -59,14 +66,14 @@ describe("ai-gateway routes", () => {
   });
 
   it("lists a workspace's configs", async () => {
-    const workspace = await makeWorkspace();
+    const { workspace, cookie } = await makeWorkspace();
     await app.request("/v1/provider-configs", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Cookie: cookie },
       body: JSON.stringify({ workspaceId: workspace.id, provider: "Google", keyMode: "Platform" })
     });
 
-    const res = await app.request(`/v1/provider-configs?workspaceId=${workspace.id}`);
+    const res = await app.request(`/v1/provider-configs?workspaceId=${workspace.id}`, { headers: { Cookie: cookie } });
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -74,17 +81,17 @@ describe("ai-gateway routes", () => {
   });
 
   it("disables a config", async () => {
-    const workspace = await makeWorkspace();
+    const { workspace, cookie } = await makeWorkspace();
     const createRes = await app.request("/v1/provider-configs", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Cookie: cookie },
       body: JSON.stringify({ workspaceId: workspace.id, provider: "Google", keyMode: "Platform" })
     });
     const { config } = await createRes.json();
 
     const res = await app.request(`/v1/provider-configs/${config.id}/disable`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Cookie: cookie },
       body: JSON.stringify({ workspaceId: workspace.id })
     });
 
