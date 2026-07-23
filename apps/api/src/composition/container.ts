@@ -35,9 +35,11 @@ import {
 } from "@enlace/knowledge";
 import {
   AddMessageUseCase,
+  ConversationEventBus,
   EscalateConversationUseCase,
   GetConversationUseCase,
   IncomingMessageUseCase,
+  ListConversationsUseCase,
   PrismaConversationRepository,
   StartConversationUseCase
 } from "@enlace/conversations";
@@ -68,6 +70,7 @@ function buildContainer() {
   const authPort = new BetterAuthAdapter();
   const channelRepository = new PrismaChannelRepository();
   const conversationRepository = new PrismaConversationRepository();
+  const conversationEventBus = new ConversationEventBus();
   const faqRepository = new PrismaFaqRepository();
   const knowledgeSourceRepository = new PrismaKnowledgeSourceRepository();
   const ingestionTrigger = new TemporalIngestionTrigger();
@@ -106,6 +109,8 @@ function buildContainer() {
     addMessageUseCase,
     escalateConversationUseCase,
     getConversationUseCase: new GetConversationUseCase(conversationRepository),
+    listConversationsUseCase: new ListConversationsUseCase(conversationRepository),
+    conversationEventBus,
     createFaqUseCase: new CreateFaqUseCase(faqRepository),
     listFaqsUseCase: new ListFaqsUseCase(faqRepository),
     createKnowledgeSourceUseCase: new CreateKnowledgeSourceUseCase(knowledgeSourceRepository, ingestionTrigger),

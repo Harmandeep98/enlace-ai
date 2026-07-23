@@ -34,6 +34,18 @@ conversationRoutes.post("/v1/conversations", async (c) => {
   try {
     await container.verifyWorkspaceMembershipUseCase.execute(c.get("userId"), parsed.data.workspaceId);
     const result = await container.incomingMessageUseCase.startConversation(parsed.data);
+    container.conversationEventBus.emit(parsed.data.workspaceId, {
+      type: "message",
+      conversationId: result.conversation.id,
+      message: result.message
+    });
+    if (result.aiReply) {
+      container.conversationEventBus.emit(parsed.data.workspaceId, {
+        type: "message",
+        conversationId: result.conversation.id,
+        message: result.aiReply
+      });
+    }
     return c.json(result, 201);
   } catch (error) {
     return mapDomainErrorToResponse(error, c);
@@ -52,9 +64,26 @@ conversationRoutes.post("/v1/conversations/:id/messages", async (c) => {
     // §5) — an agent's or the AI's own reply doesn't need its own message checked against the cache.
     if (parsed.data.sender === "Customer") {
       const result = await container.incomingMessageUseCase.addMessage({ conversationId: c.req.param("id"), ...parsed.data });
+      container.conversationEventBus.emit(parsed.data.workspaceId, {
+        type: "message",
+        conversationId: c.req.param("id"),
+        message: result.message
+      });
+      if (result.aiReply) {
+        container.conversationEventBus.emit(parsed.data.workspaceId, {
+          type: "message",
+          conversationId: c.req.param("id"),
+          message: result.aiReply
+        });
+      }
       return c.json(result, 201);
     }
     const message = await container.addMessageUseCase.execute({ conversationId: c.req.param("id"), ...parsed.data });
+    container.conversationEventBus.emit(parsed.data.workspaceId, {
+      type: "message",
+      conversationId: c.req.param("id"),
+      message
+    });
     return c.json({ message }, 201);
   } catch (error) {
     return mapDomainErrorToResponse(error, c);
@@ -70,6 +99,11 @@ conversationRoutes.post("/v1/conversations/:id/escalate", async (c) => {
   try {
     await container.verifyWorkspaceMembershipUseCase.execute(c.get("userId"), parsed.data.workspaceId);
     const conversation = await container.escalateConversationUseCase.execute({ conversationId: c.req.param("id"), ...parsed.data });
+    container.conversationEventBus.emit(parsed.data.workspaceId, {
+      type: "status",
+      conversationId: c.req.param("id"),
+      conversation
+    });
     return c.json({ conversation }, 200);
   } catch (error) {
     return mapDomainErrorToResponse(error, c);
