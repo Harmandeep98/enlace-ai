@@ -129,6 +129,62 @@ describe("PrismaConversationRepository", () => {
     expect(messages.map((m) => m.content)).toEqual(["Second message", "Third message"]);
   });
 
+  it("lists conversations for a workspace ordered by most recently updated", async () => {
+    const workspace = await makeWorkspace();
+    const channel = await makeChannel(workspace.id);
+    const { conversation: first } = await repo.create({
+      workspaceId: workspace.id,
+      channelId: channel.id,
+      customerRef: "customer-1",
+      message: "First"
+    });
+    const { conversation: second } = await repo.create({
+      workspaceId: workspace.id,
+      channelId: channel.id,
+      customerRef: "customer-2",
+      message: "Second"
+    });
+    await repo.updateStatus(second.id, workspace.id, "Escalated", "LowConfidence");
+
+    const all = await repo.listConversations(workspace.id);
+
+    expect(all.map((c) => c.id)).toEqual([second.id, first.id]);
+  });
+
+  it("filters listConversations by status", async () => {
+    const workspace = await makeWorkspace();
+    const channel = await makeChannel(workspace.id);
+    const { conversation: open } = await repo.create({
+      workspaceId: workspace.id,
+      channelId: channel.id,
+      customerRef: "customer-1",
+      message: "Hi"
+    });
+    const { conversation: escalated } = await repo.create({
+      workspaceId: workspace.id,
+      channelId: channel.id,
+      customerRef: "customer-2",
+      message: "Hi"
+    });
+    await repo.updateStatus(escalated.id, workspace.id, "Escalated", "LowConfidence");
+
+    const escalatedOnly = await repo.listConversations(workspace.id, "Escalated");
+
+    expect(escalatedOnly.map((c) => c.id)).toEqual([escalated.id]);
+    expect(escalatedOnly.map((c) => c.id)).not.toContain(open.id);
+  });
+
+  it("does not list a conversation created under a different workspace", async () => {
+    const workspaceA = await makeWorkspace();
+    const channelA = await makeChannel(workspaceA.id);
+    await repo.create({ workspaceId: workspaceA.id, channelId: channelA.id, customerRef: "customer-1", message: "Hi" });
+    const workspaceB = await makeWorkspace();
+
+    const result = await repo.listConversations(workspaceB.id);
+
+    expect(result).toEqual([]);
+  });
+
   // docs/21-testing-strategy.md §5 — id-only-equivalent isolation via RLS.
   it("returns no messages for a conversation read under a different workspace", async () => {
     const workspaceA = await makeWorkspace();

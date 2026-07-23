@@ -1,4 +1,4 @@
-import type { Conversation, EscalationReason, Message, MessageSender, ResolutionPath } from "../domain/entities.js";
+import type { Conversation, ConversationStatus, EscalationReason, Message, MessageSender, ResolutionPath } from "../domain/entities.js";
 
 export interface StartConversationInput {
   workspaceId: string;
@@ -18,6 +18,7 @@ export interface AppendMessageInput {
 export interface ConversationRepository {
   create(input: StartConversationInput): Promise<{ conversation: Conversation; message: Message }>;
   findById(conversationId: string, workspaceId: string): Promise<Conversation | undefined>;
+  listConversations(workspaceId: string, status?: ConversationStatus): Promise<Conversation[]>;
   appendMessage(input: AppendMessageInput): Promise<Message>;
   listMessages(conversationId: string, workspaceId: string, limit: number): Promise<Message[]>;
   updateStatus(
