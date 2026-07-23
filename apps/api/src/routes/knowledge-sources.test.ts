@@ -68,4 +68,47 @@ describe("Knowledge source routes", () => {
     // workflow.start call), not that a crawl actually completes.
     expect(res.status).toBe(201);
   });
+
+  it("DELETE /v1/knowledge-sources/:id deletes a source", async () => {
+    const { workspace, cookie } = await makeWorkspace();
+    const createRes = await app.request("/v1/knowledge-sources", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ workspaceId: workspace.id, type: "Website", origin: "https://example.com" })
+    });
+    const { source } = await createRes.json();
+
+    const res = await app.request(`/v1/knowledge-sources/${source.id}?workspaceId=${workspace.id}`, {
+      method: "DELETE",
+      headers: { Cookie: cookie }
+    });
+
+    expect(res.status).toBe(204);
+    const listRes = await app.request(`/v1/knowledge-sources?workspaceId=${workspace.id}`, { headers: { Cookie: cookie } });
+    const listBody = await listRes.json();
+    expect(listBody.sources).toHaveLength(0);
+  });
+
+  it("DELETE /v1/knowledge-sources/:id returns 404 for a source that doesn't exist in that workspace", async () => {
+    const { workspace, cookie } = await makeWorkspace();
+
+    const res = await app.request(`/v1/knowledge-sources/00000000-0000-0000-0000-000000000000?workspaceId=${workspace.id}`, {
+      method: "DELETE",
+      headers: { Cookie: cookie }
+    });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("DELETE /v1/knowledge-sources/:id returns 403 for a workspace the caller has no membership in", async () => {
+    const { cookie } = await makeWorkspace();
+    const otherWorkspace = await prisma.workspace.create({ data: { name: "Other Co", slug: `test-${randomUUID()}` } });
+
+    const res = await app.request(`/v1/knowledge-sources/00000000-0000-0000-0000-000000000000?workspaceId=${otherWorkspace.id}`, {
+      method: "DELETE",
+      headers: { Cookie: cookie }
+    });
+
+    expect(res.status).toBe(403);
+  });
 });

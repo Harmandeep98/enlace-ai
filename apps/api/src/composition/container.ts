@@ -25,6 +25,8 @@ import {
 import {
   CreateFaqUseCase,
   CreateKnowledgeSourceUseCase,
+  DeleteFaqUseCase,
+  DeleteKnowledgeSourceUseCase,
   ListFaqsUseCase,
   ListKnowledgeSourcesUseCase,
   PrismaDocumentChunkRepository,
@@ -116,6 +118,8 @@ function buildContainer() {
     listFaqsUseCase: new ListFaqsUseCase(faqRepository),
     createKnowledgeSourceUseCase: new CreateKnowledgeSourceUseCase(knowledgeSourceRepository, ingestionTrigger),
     listKnowledgeSourcesUseCase: new ListKnowledgeSourcesUseCase(knowledgeSourceRepository),
+    deleteKnowledgeSourceUseCase: new DeleteKnowledgeSourceUseCase(knowledgeSourceRepository),
+    deleteFaqUseCase: new DeleteFaqUseCase(faqRepository),
     createIntegrationConnectionUseCase,
     verifyWorkspaceMembershipUseCase,
     incomingMessageUseCase: new IncomingMessageUseCase(

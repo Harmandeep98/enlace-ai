@@ -65,4 +65,35 @@ describe("FAQ routes", () => {
     const correctWorkspace = await app.request(`/v1/faqs?workspaceId=${workspace.id}`, { headers: { Cookie: cookie } });
     expect(correctWorkspace.status).toBe(200);
   });
+
+  it("DELETE /v1/faqs/:id deletes an FAQ entry", async () => {
+    const { workspace, cookie } = await makeWorkspace();
+    const createRes = await app.request("/v1/faqs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ workspaceId: workspace.id, question: "What are your hours?", answer: "9am-5pm." })
+    });
+    const { faq } = await createRes.json();
+
+    const res = await app.request(`/v1/faqs/${faq.id}?workspaceId=${workspace.id}`, {
+      method: "DELETE",
+      headers: { Cookie: cookie }
+    });
+
+    expect(res.status).toBe(204);
+    const listRes = await app.request(`/v1/faqs?workspaceId=${workspace.id}`, { headers: { Cookie: cookie } });
+    const listBody = await listRes.json();
+    expect(listBody.faqs).toHaveLength(0);
+  });
+
+  it("DELETE /v1/faqs/:id returns 404 for an FAQ that doesn't exist in that workspace", async () => {
+    const { workspace, cookie } = await makeWorkspace();
+
+    const res = await app.request(`/v1/faqs/00000000-0000-0000-0000-000000000000?workspaceId=${workspace.id}`, {
+      method: "DELETE",
+      headers: { Cookie: cookie }
+    });
+
+    expect(res.status).toBe(404);
+  });
 });

@@ -45,3 +45,18 @@ knowledgeSourceRoutes.get("/v1/knowledge-sources", async (c) => {
     return mapDomainErrorToResponse(error, c);
   }
 });
+
+knowledgeSourceRoutes.delete("/v1/knowledge-sources/:id", async (c) => {
+  const workspaceId = c.req.query("workspaceId");
+  if (!workspaceId) {
+    return c.json({ error: { code: "validation_error", message: "workspaceId query param is required.", requestId: c.get("requestId") } }, 400);
+  }
+
+  try {
+    await container.verifyWorkspaceMembershipUseCase.execute(c.get("userId"), workspaceId);
+    await container.deleteKnowledgeSourceUseCase.execute({ sourceId: c.req.param("id"), workspaceId });
+    return c.body(null, 204);
+  } catch (error) {
+    return mapDomainErrorToResponse(error, c);
+  }
+});

@@ -3,6 +3,7 @@ import type { Context } from "hono";
 import { DomainError } from "@enlace/shared";
 import { WorkspaceAccessDeniedError, WorkspaceSlugTakenError } from "@enlace/identity";
 import { ConversationNotFoundError, ConversationNotOpenError, EscalationReasonRequiredError } from "@enlace/conversations";
+import { FaqNotFoundError, KnowledgeSourceNotFoundError } from "@enlace/knowledge";
 import {
   CredentialRequiredError,
   PlatformKeyModeRequiresGoogleError,
@@ -20,7 +21,9 @@ const errorStatusMap = new Map<new (...args: never[]) => DomainError, number>([
   [PlatformKeyModeRequiresGoogleError, 400],
   [CredentialRequiredError, 400],
   [ProviderKeyValidationFailedError, 400],
-  [ProviderConfigNotFoundError, 404]
+  [ProviderConfigNotFoundError, 404],
+  [KnowledgeSourceNotFoundError, 404],
+  [FaqNotFoundError, 404]
 ]);
 
 export function mapDomainErrorToResponse(error: unknown, c: Context<AppEnv>) {
