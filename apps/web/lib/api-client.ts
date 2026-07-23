@@ -19,3 +19,13 @@ export async function signUp(input: SignUpRequest): Promise<{ ok: true } | { ok:
   }
   return { ok: true };
 }
+
+export async function getMyWorkspace(): Promise<{ ok: true; workspaceId: string } | { ok: false; message: string }> {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/v1/me`, { credentials: "include" });
+  if (!res.ok) {
+    const body = await res.json();
+    return { ok: false, message: body.error?.message ?? "Could not resolve your workspace." };
+  }
+  const body = await res.json();
+  return { ok: true, workspaceId: body.workspaceId };
+}
