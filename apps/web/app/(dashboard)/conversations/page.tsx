@@ -22,13 +22,15 @@ export default function ConversationsPage() {
 
   useEffect(() => {
     if (!workspaceId) return;
-    listConversations(workspaceId).then((result) => {
-      if (result.ok) {
-        setConversations(result.conversations);
-      } else {
-        setError(result.message);
-      }
-    });
+    listConversations(workspaceId)
+      .then((result) => {
+        if (result.ok) {
+          setConversations(result.conversations);
+        } else {
+          setError(result.message);
+        }
+      })
+      .catch(() => setError("Could not reach the server."));
   }, [workspaceId]);
 
   const handleEvent = useCallback((event: ConversationEvent) => {

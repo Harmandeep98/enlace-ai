@@ -16,14 +16,19 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    getMyWorkspace().then((result) => {
-      if (cancelled) return;
-      if (result.ok) {
-        setState({ workspaceId: result.workspaceId, loading: false, error: null });
-      } else {
-        setState({ workspaceId: null, loading: false, error: result.message });
-      }
-    });
+    getMyWorkspace()
+      .then((result) => {
+        if (cancelled) return;
+        if (result.ok) {
+          setState({ workspaceId: result.workspaceId, loading: false, error: null });
+        } else {
+          setState({ workspaceId: null, loading: false, error: result.message });
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setState({ workspaceId: null, loading: false, error: "Could not reach the server." });
+      });
     return () => {
       cancelled = true;
     };

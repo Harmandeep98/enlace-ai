@@ -20,14 +20,16 @@ export default function ConversationDetailPage() {
 
   useEffect(() => {
     if (!workspaceId) return;
-    getConversation(params.id, workspaceId).then((result) => {
-      if (result.ok) {
-        setConversation(result.conversation);
-        setMessages(result.messages);
-      } else {
-        setError(result.message);
-      }
-    });
+    getConversation(params.id, workspaceId)
+      .then((result) => {
+        if (result.ok) {
+          setConversation(result.conversation);
+          setMessages(result.messages);
+        } else {
+          setError(result.message);
+        }
+      })
+      .catch(() => setError("Could not reach the server."));
   }, [workspaceId, params.id]);
 
   const handleEvent = useCallback(
