@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { AuthSplitLayout } from "@/components/auth-split-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { signIn } from "@/lib/auth-client";
 
@@ -46,7 +47,7 @@ export default function SignInPage() {
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="password">Password</Label>
-          <Input id="password" name="password" type="password" placeholder="••••••••" required />
+          <PasswordInput id="password" name="password" placeholder="••••••••" required />
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <Button type="submit" size="lg" className="mt-2" disabled={submitting}>
