@@ -191,6 +191,27 @@ describe("Conversations routes", () => {
   );
 
   it(
+    "GET /v1/conversations/:id returns the conversation's message thread",
+    async () => {
+      const { workspace, channel, cookie } = await makeWorkspaceAndChannel();
+      const startRes = await app.request("/v1/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: cookie },
+        body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi." })
+      });
+      const { conversation } = await startRes.json();
+
+      const res = await app.request(`/v1/conversations/${conversation.id}?workspaceId=${workspace.id}`, { headers: { Cookie: cookie } });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.messages.length).toBeGreaterThanOrEqual(1);
+      expect(body.messages[0].content).toBe("Hi.");
+    },
+    30000
+  );
+
+  it(
     "GET /v1/conversations/:id returns 404 when the caller belongs to the queried workspace but the conversation doesn't",
     async () => {
       const { workspace, channel, cookie, userId } = await makeWorkspaceAndChannel();

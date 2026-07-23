@@ -168,7 +168,8 @@ conversationRoutes.get("/v1/conversations/:id", async (c) => {
   try {
     await container.verifyWorkspaceMembershipUseCase.execute(c.get("userId"), workspaceId);
     const conversation = await container.getConversationUseCase.execute({ conversationId: c.req.param("id"), workspaceId });
-    return c.json({ conversation }, 200);
+    const messages = await container.conversationRepository.listMessages(c.req.param("id"), workspaceId, 100);
+    return c.json({ conversation, messages }, 200);
   } catch (error) {
     return mapDomainErrorToResponse(error, c);
   }

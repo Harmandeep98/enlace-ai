@@ -111,6 +111,7 @@ function buildContainer() {
     getConversationUseCase: new GetConversationUseCase(conversationRepository),
     listConversationsUseCase: new ListConversationsUseCase(conversationRepository),
     conversationEventBus,
+    conversationRepository,
     createFaqUseCase: new CreateFaqUseCase(faqRepository),
     listFaqsUseCase: new ListFaqsUseCase(faqRepository),
     createKnowledgeSourceUseCase: new CreateKnowledgeSourceUseCase(knowledgeSourceRepository, ingestionTrigger),
