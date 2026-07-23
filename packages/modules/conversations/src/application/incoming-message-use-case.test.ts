@@ -33,7 +33,9 @@ class FakeConversationRepository implements ConversationRepository {
       channelId: input.channelId,
       customerRef: input.customerRef,
       status: "Open",
-      escalationReason: null
+      escalationReason: null,
+      createdAt: new Date(0),
+      updatedAt: new Date(0)
     };
     this.conversations.set(conversation.id, conversation);
     const message: Message = {
@@ -50,6 +52,10 @@ class FakeConversationRepository implements ConversationRepository {
 
   async findById(conversationId: string): Promise<Conversation | undefined> {
     return this.conversations.get(conversationId);
+  }
+
+  async listConversations(): Promise<Conversation[]> {
+    return [];
   }
 
   async appendMessage(input: AppendMessageInput): Promise<Message> {

@@ -16,6 +16,10 @@ class FakeConversationRepository implements ConversationRepository {
     return this.existing;
   }
 
+  async listConversations(): Promise<Conversation[]> {
+    return [];
+  }
+
   async appendMessage(input: AppendMessageInput): Promise<Message> {
     this.appended.push(input);
     return {
@@ -38,7 +42,16 @@ class FakeConversationRepository implements ConversationRepository {
 }
 
 function makeConversation(status: Conversation["status"]): Conversation {
-  return { id: "conversation-1", workspaceId: "workspace-1", channelId: "channel-1", customerRef: "customer-1", status, escalationReason: null };
+  return {
+    id: "conversation-1",
+    workspaceId: "workspace-1",
+    channelId: "channel-1",
+    customerRef: "customer-1",
+    status,
+    escalationReason: null,
+    createdAt: new Date(0),
+    updatedAt: new Date(0)
+  };
 }
 
 describe("AddMessageUseCase", () => {

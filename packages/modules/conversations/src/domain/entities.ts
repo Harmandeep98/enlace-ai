@@ -11,6 +11,8 @@ export interface Conversation {
   customerRef: string;
   status: ConversationStatus;
   escalationReason: EscalationReason | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Message {

@@ -14,7 +14,9 @@ class FakeConversationRepository implements ConversationRepository {
       channelId: input.channelId,
       customerRef: input.customerRef,
       status: "Open",
-      escalationReason: null
+      escalationReason: null,
+      createdAt: new Date(0),
+      updatedAt: new Date(0)
     };
     const message: Message = {
       id: "message-1",
@@ -29,6 +31,10 @@ class FakeConversationRepository implements ConversationRepository {
 
   async findById(): Promise<Conversation | undefined> {
     throw new Error("not used in this test");
+  }
+
+  async listConversations(): Promise<Conversation[]> {
+    return [];
   }
 
   async appendMessage(_input: AppendMessageInput): Promise<Message> {

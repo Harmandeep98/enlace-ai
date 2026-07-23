@@ -16,6 +16,10 @@ class FakeConversationRepository implements ConversationRepository {
     return this.existing;
   }
 
+  async listConversations(): Promise<Conversation[]> {
+    return [];
+  }
+
   async appendMessage(_input: AppendMessageInput): Promise<Message> {
     throw new Error("not used in this test");
   }
@@ -47,7 +51,16 @@ class FakeEscalationNotifierPort implements EscalationNotifierPort {
 }
 
 function makeConversation(): Conversation {
-  return { id: "conversation-1", workspaceId: "workspace-1", channelId: "channel-1", customerRef: "customer-1", status: "Open", escalationReason: null };
+  return {
+    id: "conversation-1",
+    workspaceId: "workspace-1",
+    channelId: "channel-1",
+    customerRef: "customer-1",
+    status: "Open",
+    escalationReason: null,
+    createdAt: new Date(0),
+    updatedAt: new Date(0)
+  };
 }
 
 describe("EscalateConversationUseCase", () => {

@@ -9,6 +9,8 @@ function toConversation(row: {
   customerRef: string;
   status: Conversation["status"];
   escalationReason: EscalationReason | null;
+  createdAt: Date;
+  updatedAt: Date;
 }): Conversation {
   return {
     id: row.id,
@@ -16,7 +18,9 @@ function toConversation(row: {
     channelId: row.channelId,
     customerRef: row.customerRef,
     status: row.status,
-    escalationReason: row.escalationReason
+    escalationReason: row.escalationReason,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt
   };
 }
 

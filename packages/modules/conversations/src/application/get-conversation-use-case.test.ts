@@ -15,6 +15,10 @@ class FakeConversationRepository implements ConversationRepository {
     return this.existing;
   }
 
+  async listConversations(): Promise<Conversation[]> {
+    return [];
+  }
+
   async appendMessage(_input: AppendMessageInput): Promise<Message> {
     throw new Error("not used in this test");
   }
@@ -36,7 +40,9 @@ describe("GetConversationUseCase", () => {
       channelId: "channel-1",
       customerRef: "customer-1",
       status: "Open",
-      escalationReason: null
+      escalationReason: null,
+      createdAt: new Date(0),
+      updatedAt: new Date(0)
     };
     const useCase = new GetConversationUseCase(new FakeConversationRepository(conversation));
 

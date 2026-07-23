@@ -4,7 +4,16 @@ import { assertCanAddCustomerMessage, assertValidEscalation } from "./invariants
 import type { Conversation } from "./entities.js";
 
 function makeConversation(status: Conversation["status"]): Conversation {
-  return { id: "conv-1", workspaceId: "ws-1", channelId: "chan-1", customerRef: "cust-1", status, escalationReason: null };
+  return {
+    id: "conv-1",
+    workspaceId: "ws-1",
+    channelId: "chan-1",
+    customerRef: "cust-1",
+    status,
+    escalationReason: null,
+    createdAt: new Date(0),
+    updatedAt: new Date(0)
+  };
 }
 
 describe("assertCanAddCustomerMessage", () => {
