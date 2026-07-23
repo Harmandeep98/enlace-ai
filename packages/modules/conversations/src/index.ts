@@ -25,6 +25,8 @@ export type { EscalateConversationInput } from "./application/escalate-conversat
 export { GetConversationUseCase } from "./application/get-conversation-use-case.js";
 export type { GetConversationInput } from "./application/get-conversation-use-case.js";
 export { IncomingMessageUseCase } from "./application/incoming-message-use-case.js";
+export { ListConversationsUseCase } from "./application/list-conversations-use-case.js";
+export type { ListConversationsInput } from "./application/list-conversations-use-case.js";
 export type { AddMessageWithReplyResult, StartConversationWithReplyResult } from "./application/incoming-message-use-case.js";
 export { StartConversationUseCase } from "./application/start-conversation-use-case.js";
 export type { StartConversationResult } from "./application/start-conversation-use-case.js";
