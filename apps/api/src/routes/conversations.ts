@@ -136,6 +136,29 @@ conversationRoutes.post("/v1/conversations/:id/escalate", async (c) => {
   }
 });
 
+conversationRoutes.get("/v1/conversations/events", async (c) => {
+  const workspaceId = c.req.query("workspaceId");
+  if (!workspaceId) {
+    return c.json({ error: { code: "validation_error", message: "workspaceId query param is required.", requestId: c.get("requestId") } }, 400);
+  }
+
+  try {
+    await container.verifyWorkspaceMembershipUseCase.execute(c.get("userId"), workspaceId);
+  } catch (error) {
+    return mapDomainErrorToResponse(error, c);
+  }
+
+  return streamSSE(c, async (stream) => {
+    const unsubscribe = container.conversationEventBus.subscribe(workspaceId, (event) => {
+      void stream.writeSSE({ data: JSON.stringify(event) });
+    });
+    stream.onAbort(() => unsubscribe());
+    while (!stream.aborted) {
+      await stream.sleep(30000);
+    }
+  });
+});
+
 conversationRoutes.get("/v1/conversations/:id", async (c) => {
   const workspaceId = c.req.query("workspaceId");
   if (!workspaceId) {

@@ -275,6 +275,49 @@ describe("Conversations routes", () => {
     expect(res.status).toBe(403);
   });
 
+  it("GET /v1/conversations/events returns 403 for a workspace the caller has no membership in", async () => {
+    const { cookie } = await makeWorkspaceAndChannel();
+    const otherWorkspace = await prisma.workspace.create({ data: { name: "Other Co", slug: `test-${randomUUID()}` } });
+
+    const res = await app.request(`/v1/conversations/events?workspaceId=${otherWorkspace.id}`, { headers: { Cookie: cookie } });
+
+    expect(res.status).toBe(403);
+  });
+
+  it(
+    "GET /v1/conversations/events streams a real emitted event to a subscribed client",
+    async () => {
+      const { workspace, channel, cookie } = await makeWorkspaceAndChannel();
+
+      const streamRes = await app.request(`/v1/conversations/events?workspaceId=${workspace.id}`, { headers: { Cookie: cookie } });
+      expect(streamRes.status).toBe(200);
+      expect(streamRes.headers.get("content-type")).toContain("text/event-stream");
+
+      const reader = streamRes.body!.getReader();
+      const decoder = new TextDecoder();
+
+      const startRes = await app.request("/v1/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: cookie },
+        body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi." })
+      });
+      const { conversation } = await startRes.json();
+
+      let received = "";
+      while (!received.includes(conversation.id)) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        received += decoder.decode(value);
+      }
+
+      expect(received).toContain('"type":"message"');
+      expect(received).toContain(conversation.id);
+
+      await reader.cancel();
+    },
+    30000
+  );
+
   // Hits the real Gemini API (free tier) — skipped without a key, same gating this repo
   // already applies to every other real-API test this session.
   const maybeIt = process.env.GEMINI_API_KEY ? it : it.skip;
