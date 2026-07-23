@@ -32,3 +32,5 @@ export { StartConversationUseCase } from "./application/start-conversation-use-c
 export type { StartConversationResult } from "./application/start-conversation-use-case.js";
 
 export { PrismaConversationRepository } from "./infrastructure/prisma-conversation-repository.js";
+export { ConversationEventBus } from "./infrastructure/conversation-event-bus.js";
+export type { ConversationEvent } from "./infrastructure/conversation-event-bus.js";
