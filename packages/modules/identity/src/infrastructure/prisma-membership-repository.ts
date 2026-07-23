@@ -38,4 +38,15 @@ export class PrismaMembershipRepository implements MembershipRepository {
     if (!row) return undefined;
     return { id: row.id, workspaceId: row.workspaceId, userId: row.userId, role: row.role, status: row.status };
   }
+
+  async findFirstActiveWorkspaceIdForUser(userId: string): Promise<string | undefined> {
+    const row = await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT set_config('app.user_id', ${userId}, true)`;
+      return tx.membership.findFirst({
+        where: { userId, status: "Active" },
+        orderBy: { createdAt: "asc" }
+      });
+    });
+    return row?.workspaceId;
+  }
 }

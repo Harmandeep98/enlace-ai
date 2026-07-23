@@ -23,6 +23,7 @@ export type {
 } from "./application/ports.js";
 export { SignUpUseCase } from "./application/sign-up-use-case.js";
 export { VerifyWorkspaceMembershipUseCase } from "./application/verify-workspace-membership-use-case.js";
+export { GetMyWorkspaceUseCase } from "./application/get-my-workspace-use-case.js";
 export type { SignUpInput, SignUpResult } from "./application/sign-up-use-case.js";
 
 export { auth, BetterAuthAdapter } from "./infrastructure/better-auth-adapter.js";

@@ -1,5 +1,12 @@
 // docs/04-folder-structure.md §3 — the one place in apps/api allowed to import infrastructure directly.
-import { BetterAuthAdapter, PrismaMembershipRepository, PrismaWorkspaceRepository, SignUpUseCase, VerifyWorkspaceMembershipUseCase } from "@enlace/identity";
+import {
+  BetterAuthAdapter,
+  GetMyWorkspaceUseCase,
+  PrismaMembershipRepository,
+  PrismaWorkspaceRepository,
+  SignUpUseCase,
+  VerifyWorkspaceMembershipUseCase
+} from "@enlace/identity";
 import { PrismaChannelRepository } from "@enlace/channels";
 import {
   CheckCostCeilingUseCase,
@@ -94,6 +101,7 @@ function buildContainer() {
 
   return {
     signUpUseCase: new SignUpUseCase(workspaceRepository, membershipRepository, authPort, channelRepository),
+    getMyWorkspaceUseCase: new GetMyWorkspaceUseCase(membershipRepository),
     startConversationUseCase,
     addMessageUseCase,
     escalateConversationUseCase,

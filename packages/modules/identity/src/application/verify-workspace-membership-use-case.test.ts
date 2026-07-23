@@ -18,6 +18,10 @@ class FakeMembershipRepository implements MembershipRepository {
   async findByUserAndWorkspace(): Promise<Membership | undefined> {
     return this.membership;
   }
+
+  async findFirstActiveWorkspaceIdForUser(): Promise<string | undefined> {
+    return undefined;
+  }
 }
 
 describe("VerifyWorkspaceMembershipUseCase", () => {

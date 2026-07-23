@@ -42,6 +42,10 @@ class FakeMembershipRepository implements MembershipRepository {
   async findByUserAndWorkspace(): Promise<Membership | undefined> {
     return undefined;
   }
+
+  async findFirstActiveWorkspaceIdForUser(): Promise<string | undefined> {
+    return undefined;
+  }
 }
 
 class FakeAuthPort implements AuthPort {

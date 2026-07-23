@@ -20,3 +20,11 @@ identityRoutes.post("/v1/signup", async (c) => {
     return mapDomainErrorToResponse(error, c);
   }
 });
+
+identityRoutes.get("/v1/me", async (c) => {
+  const workspaceId = await container.getMyWorkspaceUseCase.execute(c.get("userId"));
+  if (!workspaceId) {
+    return c.json({ error: { code: "no_workspace", message: "No workspace found for this account.", requestId: c.get("requestId") } }, 404);
+  }
+  return c.json({ workspaceId }, 200);
+});
