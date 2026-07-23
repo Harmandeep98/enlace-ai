@@ -1,48 +1,105 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession, signOut } from "@/lib/auth-client";
-import { Button } from "@/components/ui/button";
+import { useSession } from "@/lib/auth-client";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { UserMenu } from "@/components/user-menu";
 import { WorkspaceProvider } from "@/lib/workspace-context";
 import { cn } from "@/lib/utils";
 
-const NAV_ITEMS = [{ href: "/conversations", label: "Conversations" }];
+const SIDEBAR_COLLAPSED_KEY = "sidebar-collapsed";
+
+const NAV_ITEMS = [
+  {
+    href: "/conversations",
+    label: "Conversations",
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+    )
+  }
+];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { data: session, isPending } = useSession();
   const pathname = usePathname();
+  const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    setCollapsed(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true");
+  }, []);
+
+  function toggleCollapsed() {
+    setCollapsed((current) => {
+      const next = !current;
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(next));
+      return next;
+    });
+  }
 
   return (
     <WorkspaceProvider>
-      <div className="min-h-screen bg-muted/30">
+      <div className="flex min-h-screen flex-col bg-muted/30">
         <header className="flex items-center justify-between border-b border-border bg-background px-6 py-4">
-          <div className="text-lg font-semibold tracking-tight">Enlace Ai</div>
-          {!isPending && (
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleCollapsed}
+              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              className="flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+                <line x1="3" y1="6" x2="21" y2="6" />
+                <line x1="3" y1="12" x2="21" y2="12" />
+                <line x1="3" y1="18" x2="21" y2="18" />
+              </svg>
+            </button>
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-teal-500 via-cyan-600 to-blue-700 text-sm font-bold text-white">
+                E
+              </div>
+              <span className="text-lg font-semibold tracking-tight">Enlace Ai</span>
+            </div>
+          </div>
+          {!isPending && session && (
             <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground">{session?.user.email}</span>
-              <Button variant="outline" size="sm" onClick={() => signOut()}>
-                Sign out
-              </Button>
+              <ThemeToggle />
+              <UserMenu email={session.user.email} />
             </div>
           )}
         </header>
-        <div className="flex">
-          <nav className="w-56 shrink-0 border-r border-border bg-background p-4">
-            {NAV_ITEMS.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "block rounded-md px-3 py-2 text-sm font-medium",
-                  pathname?.startsWith(item.href)
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                {item.label}
-              </Link>
-            ))}
+        <div className="flex flex-1">
+          <nav
+            className={cn(
+              "flex shrink-0 flex-col border-r border-border bg-background p-4 transition-all duration-200",
+              collapsed ? "w-16" : "w-56"
+            )}
+          >
+            {!collapsed && (
+              <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Menu</p>
+            )}
+            <div className="flex-1 space-y-1">
+              {NAV_ITEMS.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  title={collapsed ? item.label : undefined}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    collapsed && "justify-center",
+                    pathname?.startsWith(item.href)
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {item.icon}
+                  {!collapsed && item.label}
+                </Link>
+              ))}
+            </div>
           </nav>
           <main className="flex-1 p-8">{children}</main>
         </div>
