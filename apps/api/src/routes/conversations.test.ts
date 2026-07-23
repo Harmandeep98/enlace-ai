@@ -212,6 +212,69 @@ describe("Conversations routes", () => {
     30000
   );
 
+  it(
+    "GET /v1/conversations lists every conversation in a workspace",
+    async () => {
+      const { workspace, channel, cookie } = await makeWorkspaceAndChannel();
+      const first = await app.request("/v1/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: cookie },
+        body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "First" })
+      });
+      const { conversation: firstConversation } = await first.json();
+      const second = await app.request("/v1/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: cookie },
+        body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-2", message: "Second" })
+      });
+      const { conversation: secondConversation } = await second.json();
+
+      const res = await app.request(`/v1/conversations?workspaceId=${workspace.id}`, { headers: { Cookie: cookie } });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.conversations.map((c: { id: string }) => c.id)).toEqual(
+        expect.arrayContaining([firstConversation.id, secondConversation.id])
+      );
+      expect(body.conversations).toHaveLength(2);
+    },
+    30000
+  );
+
+  it(
+    "GET /v1/conversations filters by status",
+    async () => {
+      const { workspace, channel, cookie } = await makeWorkspaceAndChannel();
+      const startRes = await app.request("/v1/conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: cookie },
+        body: JSON.stringify({ workspaceId: workspace.id, channelId: channel.id, customerRef: "customer-1", message: "Hi." })
+      });
+      const { conversation } = await startRes.json();
+      await app.request(`/v1/conversations/${conversation.id}/escalate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Cookie: cookie },
+        body: JSON.stringify({ workspaceId: workspace.id, reason: "CustomerRequest" })
+      });
+
+      const res = await app.request(`/v1/conversations?workspaceId=${workspace.id}&status=Escalated`, { headers: { Cookie: cookie } });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.conversations.map((c: { id: string }) => c.id)).toEqual([conversation.id]);
+    },
+    30000
+  );
+
+  it("GET /v1/conversations returns 403 for a workspace the caller has no membership in", async () => {
+    const { cookie } = await makeWorkspaceAndChannel();
+    const otherWorkspace = await prisma.workspace.create({ data: { name: "Other Co", slug: `test-${randomUUID()}` } });
+
+    const res = await app.request(`/v1/conversations?workspaceId=${otherWorkspace.id}`, { headers: { Cookie: cookie } });
+
+    expect(res.status).toBe(403);
+  });
+
   // Hits the real Gemini API (free tier) — skipped without a key, same gating this repo
   // already applies to every other real-API test this session.
   const maybeIt = process.env.GEMINI_API_KEY ? it : it.skip;

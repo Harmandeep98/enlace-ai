@@ -1,6 +1,8 @@
 // docs/07-api-design.md §4 — a route validates, calls one use case, maps the result. Nothing else.
 import { Hono } from "hono";
 import { z } from "zod";
+import { streamSSE } from "hono/streaming";
+import type { ConversationStatus } from "@enlace/conversations";
 import { container } from "../composition/container.js";
 import { mapDomainErrorToResponse } from "../middleware/error-handler.js";
 import type { AppEnv } from "../types.js";
@@ -23,7 +25,31 @@ const escalateSchema = z.object({
   reason: z.enum(["LowConfidence", "CustomerRequest", "ToolFailure", "PolicyTrigger"])
 });
 
+const VALID_STATUSES: ConversationStatus[] = ["Open", "AIHandling", "Escalated", "Resolved"];
+
 export const conversationRoutes = new Hono<AppEnv>();
+
+conversationRoutes.get("/v1/conversations", async (c) => {
+  const workspaceId = c.req.query("workspaceId");
+  if (!workspaceId) {
+    return c.json({ error: { code: "validation_error", message: "workspaceId query param is required.", requestId: c.get("requestId") } }, 400);
+  }
+  const statusParam = c.req.query("status");
+  if (statusParam && !VALID_STATUSES.includes(statusParam as ConversationStatus)) {
+    return c.json({ error: { code: "validation_error", message: "Invalid status filter.", requestId: c.get("requestId") } }, 400);
+  }
+
+  try {
+    await container.verifyWorkspaceMembershipUseCase.execute(c.get("userId"), workspaceId);
+    const conversations = await container.listConversationsUseCase.execute({
+      workspaceId,
+      status: statusParam as ConversationStatus | undefined
+    });
+    return c.json({ conversations }, 200);
+  } catch (error) {
+    return mapDomainErrorToResponse(error, c);
+  }
+});
 
 conversationRoutes.post("/v1/conversations", async (c) => {
   const parsed = startConversationSchema.safeParse(await c.req.json());
