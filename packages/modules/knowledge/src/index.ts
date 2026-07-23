@@ -28,3 +28,7 @@ export type { ListKnowledgeSourcesInput } from "./application/list-knowledge-sou
 export { PrismaKnowledgeSourceRepository } from "./infrastructure/prisma-knowledge-source-repository.js";
 export { PrismaDocumentChunkRepository } from "./infrastructure/prisma-document-chunk-repository.js";
 export { TemporalIngestionTrigger } from "./infrastructure/temporal-ingestion-trigger.js";
+
+export { KnowledgeSourceNotFoundError, FaqNotFoundError } from "./domain/errors.js";
+export { DeleteKnowledgeSourceUseCase } from "./application/delete-knowledge-source-use-case.js";
+export type { DeleteKnowledgeSourceInput } from "./application/delete-knowledge-source-use-case.js";

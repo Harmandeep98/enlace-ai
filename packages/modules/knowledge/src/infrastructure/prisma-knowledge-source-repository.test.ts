@@ -2,6 +2,17 @@ import { randomUUID } from "node:crypto";
 import { afterEach, describe, expect, it } from "vitest";
 import { prisma } from "@enlace/db";
 import { PrismaKnowledgeSourceRepository } from "./prisma-knowledge-source-repository.js";
+import { PrismaDocumentChunkRepository } from "./prisma-document-chunk-repository.js";
+import type { EmbeddingPort } from "../application/ports.js";
+
+class NoopEmbeddingPort implements EmbeddingPort {
+  async embed(): Promise<number[]> {
+    throw new Error("not used in this test");
+  }
+  async embedBatch(): Promise<number[][]> {
+    throw new Error("not used in this test");
+  }
+}
 
 describe("PrismaKnowledgeSourceRepository", () => {
   const repo = new PrismaKnowledgeSourceRepository();
@@ -51,5 +62,41 @@ describe("PrismaKnowledgeSourceRepository", () => {
     });
 
     expect(rowsVisibleFromB).toHaveLength(0);
+  });
+
+  it("deletes a knowledge source and cascades to its document chunks", async () => {
+    const workspace = await makeWorkspace();
+    const created = await repo.create({ workspaceId: workspace.id, type: "Website", origin: "https://example.com" });
+    const chunkRepo = new PrismaDocumentChunkRepository(new NoopEmbeddingPort());
+    await chunkRepo.insertMany(workspace.id, created.id, [
+      { content: "Some content", embedding: new Array(768).fill(0), tokenCount: 5, contentHash: "hash-1" }
+    ]);
+
+    const deleted = await repo.delete(created.id, workspace.id);
+
+    expect(deleted).toBe(true);
+    expect(await repo.listByWorkspace(workspace.id)).toHaveLength(0);
+    const remainingChunks = await prisma.$queryRaw<{ id: string }[]>`SELECT id FROM document_chunks WHERE "sourceId" = ${created.id}`;
+    expect(remainingChunks).toHaveLength(0);
+  });
+
+  it("returns false when deleting a source that doesn't exist in that workspace", async () => {
+    const workspace = await makeWorkspace();
+
+    const deleted = await repo.delete(randomUUID(), workspace.id);
+
+    expect(deleted).toBe(false);
+  });
+
+  it("does not delete a source belonging to a different workspace", async () => {
+    const workspaceA = await makeWorkspace();
+    const sourceA = await repo.create({ workspaceId: workspaceA.id, type: "Website", origin: "https://example.com" });
+    const workspaceB = await makeWorkspace();
+
+    const deleted = await repo.delete(sourceA.id, workspaceB.id);
+
+    expect(deleted).toBe(false);
+    const stillThere = await repo.listByWorkspace(workspaceA.id);
+    expect(stillThere.map((s) => s.id)).toEqual([sourceA.id]);
   });
 });

@@ -19,6 +19,9 @@ class FakeKnowledgeSourceRepository implements KnowledgeSourceRepository {
   async listByWorkspace(): Promise<KnowledgeSource[]> {
     throw new Error("not used in this test");
   }
+  async delete(): Promise<boolean> {
+    throw new Error("not used in this test");
+  }
   async updateSyncStatus(): Promise<void> {
     throw new Error("not used in this test");
   }

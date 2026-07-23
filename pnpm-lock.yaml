@@ -392,6 +392,9 @@ importers:
 
   packages/modules/knowledge:
     dependencies:
+      '@enlace/shared':
+        specifier: workspace:*
+        version: link:../../shared
       '@enlace/temporal':
         specifier: workspace:*
         version: link:../../temporal

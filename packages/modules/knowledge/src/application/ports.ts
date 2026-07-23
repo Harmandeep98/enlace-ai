@@ -31,6 +31,7 @@ export interface CreateKnowledgeSourceInput {
 export interface KnowledgeSourceRepository {
   create(input: CreateKnowledgeSourceInput): Promise<KnowledgeSource>;
   listByWorkspace(workspaceId: string): Promise<KnowledgeSource[]>;
+  delete(sourceId: string, workspaceId: string): Promise<boolean>;
   updateSyncStatus(
     sourceId: string,
     workspaceId: string,

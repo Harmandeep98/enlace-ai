@@ -12,6 +12,7 @@
     "test": "dotenv -e ../../../.env -- vitest run"
   },
   "dependencies": {
+    "@enlace/shared": "workspace:*",
     "@enlace/temporal": "workspace:*"
   },
   "devDependencies": {
