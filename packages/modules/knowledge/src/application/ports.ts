@@ -9,6 +9,7 @@ export interface CreateFaqInput {
 export interface FaqRepository {
   create(input: CreateFaqInput): Promise<FaqEntry>;
   listByWorkspace(workspaceId: string): Promise<FaqEntry[]>;
+  delete(faqId: string, workspaceId: string): Promise<boolean>;
   findBestMatch(workspaceId: string, message: string): Promise<FaqEntry | undefined>;
 }
 

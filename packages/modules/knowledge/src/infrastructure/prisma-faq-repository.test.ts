@@ -58,4 +58,34 @@ describe("PrismaFaqRepository", () => {
 
     expect(rowsVisibleFromB).toHaveLength(0);
   });
+
+  it("deletes an FAQ entry", async () => {
+    const workspace = await makeWorkspace();
+    const created = await repo.create({ workspaceId: workspace.id, question: "What are your hours?", answer: "9am-5pm." });
+
+    const deleted = await repo.delete(created.id, workspace.id);
+
+    expect(deleted).toBe(true);
+    expect(await repo.listByWorkspace(workspace.id)).toHaveLength(0);
+  });
+
+  it("returns false when deleting an FAQ that doesn't exist in that workspace", async () => {
+    const workspace = await makeWorkspace();
+
+    const deleted = await repo.delete(randomUUID(), workspace.id);
+
+    expect(deleted).toBe(false);
+  });
+
+  it("does not delete an FAQ belonging to a different workspace", async () => {
+    const workspaceA = await makeWorkspace();
+    const entryA = await repo.create({ workspaceId: workspaceA.id, question: "What are your hours?", answer: "9am-5pm." });
+    const workspaceB = await makeWorkspace();
+
+    const deleted = await repo.delete(entryA.id, workspaceB.id);
+
+    expect(deleted).toBe(false);
+    const stillThere = await repo.listByWorkspace(workspaceA.id);
+    expect(stillThere.map((e) => e.id)).toEqual([entryA.id]);
+  });
 });

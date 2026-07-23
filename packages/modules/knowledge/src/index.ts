@@ -32,3 +32,5 @@ export { TemporalIngestionTrigger } from "./infrastructure/temporal-ingestion-tr
 export { KnowledgeSourceNotFoundError, FaqNotFoundError } from "./domain/errors.js";
 export { DeleteKnowledgeSourceUseCase } from "./application/delete-knowledge-source-use-case.js";
 export type { DeleteKnowledgeSourceInput } from "./application/delete-knowledge-source-use-case.js";
+export { DeleteFaqUseCase } from "./application/delete-faq-use-case.js";
+export type { DeleteFaqInput } from "./application/delete-faq-use-case.js";

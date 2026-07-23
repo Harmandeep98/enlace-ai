@@ -14,6 +14,10 @@ class FakeFaqRepository implements FaqRepository {
     return this.entries.filter((entry) => entry.workspaceId === workspaceId);
   }
 
+  async delete(): Promise<boolean> {
+    throw new Error("not used in this test");
+  }
+
   async findBestMatch(): Promise<FaqEntry | undefined> {
     throw new Error("not used in this test");
   }

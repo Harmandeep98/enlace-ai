@@ -15,6 +15,10 @@ class FakeFaqRepository implements FaqRepository {
     throw new Error("not used in this test");
   }
 
+  async delete(): Promise<boolean> {
+    throw new Error("not used in this test");
+  }
+
   async findBestMatch(): Promise<FaqEntry | undefined> {
     throw new Error("not used in this test");
   }

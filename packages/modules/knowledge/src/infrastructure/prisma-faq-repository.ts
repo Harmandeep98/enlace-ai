@@ -27,6 +27,11 @@ export class PrismaFaqRepository implements FaqRepository {
     return rows.map(toFaqEntry);
   }
 
+  async delete(faqId: string, workspaceId: string): Promise<boolean> {
+    const result = await this.withTenant(workspaceId, (tx) => tx.faqEntry.deleteMany({ where: { id: faqId, workspaceId } }));
+    return result.count > 0;
+  }
+
   // docs/16-cost-optimization-strategy.md §2 — keyword match, not embeddings: fetch the
   // workspace's FAQs and run the pure matching algorithm (Task 2), tested once in isolation.
   async findBestMatch(workspaceId: string, message: string): Promise<FaqEntry | undefined> {
