@@ -28,3 +28,22 @@ export interface Message {
 export type ConversationEvent =
   | { type: "message"; conversationId: string; message: Message }
   | { type: "status"; conversationId: string; conversation: Conversation };
+
+export type KnowledgeSourceType = "Website" | "Pdf" | "Markdown" | "Txt" | "Faq";
+export type KnowledgeSyncStatus = "Pending" | "Processing" | "Ready" | "Failed";
+
+export interface KnowledgeSource {
+  id: string;
+  workspaceId: string;
+  type: KnowledgeSourceType;
+  origin: string;
+  syncStatus: KnowledgeSyncStatus;
+  lastSyncedAt: string | null;
+}
+
+export interface FaqEntry {
+  id: string;
+  workspaceId: string;
+  question: string;
+  answer: string;
+}

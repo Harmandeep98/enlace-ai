@@ -1,6 +1,6 @@
 import { signUpSchema } from "@enlace/contracts";
 import type { SignUpRequest } from "@enlace/contracts";
-import type { Conversation, ConversationStatus, Message } from "@/lib/types";
+import type { Conversation, ConversationStatus, FaqEntry, KnowledgeSource, Message } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -92,6 +92,92 @@ export async function escalateConversation(
   if (!res.ok) {
     const body = await res.json();
     return { ok: false, message: body.error?.message ?? "Could not escalate this conversation." };
+  }
+  return { ok: true };
+}
+
+export async function listKnowledgeSources(
+  workspaceId: string
+): Promise<{ ok: true; sources: KnowledgeSource[] } | { ok: false; message: string }> {
+  const res = await fetch(`${API_URL}/v1/knowledge-sources?workspaceId=${workspaceId}`, { credentials: "include" });
+  if (!res.ok) {
+    const body = await res.json();
+    return { ok: false, message: body.error?.message ?? "Could not load knowledge sources." };
+  }
+  const body = await res.json();
+  return { ok: true, sources: body.sources };
+}
+
+export async function createKnowledgeSource(
+  workspaceId: string,
+  url: string
+): Promise<{ ok: true; source: KnowledgeSource } | { ok: false; message: string }> {
+  const res = await fetch(`${API_URL}/v1/knowledge-sources`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ workspaceId, type: "Website", origin: url })
+  });
+  if (!res.ok) {
+    const body = await res.json();
+    return { ok: false, message: body.error?.message ?? "Could not add that source." };
+  }
+  const body = await res.json();
+  return { ok: true, source: body.source };
+}
+
+export async function deleteKnowledgeSource(
+  sourceId: string,
+  workspaceId: string
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const res = await fetch(`${API_URL}/v1/knowledge-sources/${sourceId}?workspaceId=${workspaceId}`, {
+    method: "DELETE",
+    credentials: "include"
+  });
+  if (!res.ok) {
+    const body = await res.json();
+    return { ok: false, message: body.error?.message ?? "Could not delete that source." };
+  }
+  return { ok: true };
+}
+
+export async function listFaqs(workspaceId: string): Promise<{ ok: true; faqs: FaqEntry[] } | { ok: false; message: string }> {
+  const res = await fetch(`${API_URL}/v1/faqs?workspaceId=${workspaceId}`, { credentials: "include" });
+  if (!res.ok) {
+    const body = await res.json();
+    return { ok: false, message: body.error?.message ?? "Could not load FAQs." };
+  }
+  const body = await res.json();
+  return { ok: true, faqs: body.faqs };
+}
+
+export async function createFaq(
+  workspaceId: string,
+  question: string,
+  answer: string
+): Promise<{ ok: true; faq: FaqEntry } | { ok: false; message: string }> {
+  const res = await fetch(`${API_URL}/v1/faqs`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ workspaceId, question, answer })
+  });
+  if (!res.ok) {
+    const body = await res.json();
+    return { ok: false, message: body.error?.message ?? "Could not add that FAQ." };
+  }
+  const body = await res.json();
+  return { ok: true, faq: body.faq };
+}
+
+export async function deleteFaq(faqId: string, workspaceId: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const res = await fetch(`${API_URL}/v1/faqs/${faqId}?workspaceId=${workspaceId}`, {
+    method: "DELETE",
+    credentials: "include"
+  });
+  if (!res.ok) {
+    const body = await res.json();
+    return { ok: false, message: body.error?.message ?? "Could not delete that FAQ." };
   }
   return { ok: true };
 }
