@@ -23,12 +23,15 @@
     "@temporalio/worker": "^1.20.3",
     "@temporalio/workflow": "^1.20.3",
     "cheerio": "^1.2.0",
+    "mammoth": "^1.8.0",
+    "pdf-parse": "^1.1.1",
     "robots-parser": "^3.0.1"
   },
   "devDependencies": {
     "@enlace/config": "workspace:*",
     "@enlace/db": "workspace:*",
     "@types/node": "^22.10.0",
+    "@types/pdf-parse": "^1.1.4",
     "dotenv-cli": "^7.4.0",
     "tsx": "^4.19.0",
     "vitest": "^2.1.8",
