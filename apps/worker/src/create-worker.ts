@@ -3,6 +3,7 @@ import { NativeConnection, Worker } from "@temporalio/worker";
 import { TASK_QUEUES } from "@enlace/temporal";
 import * as healthCheckActivities from "./activities/health-check.js";
 import * as knowledgeSyncActivities from "./activities/knowledge-sync.js";
+import * as fileSyncActivities from "./activities/file-sync.js";
 import * as zendeskSyncActivities from "./activities/zendesk-sync.js";
 
 // Computed relative to process.cwd() (the package root, true whether invoked via
@@ -17,6 +18,6 @@ export async function createWorker(connection: NativeConnection): Promise<Worker
     namespace: "default",
     taskQueue: TASK_QUEUES.DEFAULT,
     workflowsPath: WORKFLOWS_PATH,
-    activities: { ...healthCheckActivities, ...knowledgeSyncActivities, ...zendeskSyncActivities }
+    activities: { ...healthCheckActivities, ...knowledgeSyncActivities, ...fileSyncActivities, ...zendeskSyncActivities }
   });
 }
