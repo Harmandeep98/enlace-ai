@@ -29,7 +29,7 @@ export type ConversationEvent =
   | { type: "message"; conversationId: string; message: Message }
   | { type: "status"; conversationId: string; conversation: Conversation };
 
-export type KnowledgeSourceType = "Website" | "Pdf" | "Markdown" | "Txt" | "Faq";
+export type KnowledgeSourceType = "Website" | "Pdf" | "Docx" | "Markdown" | "Txt" | "Faq";
 export type KnowledgeSyncStatus = "Pending" | "Processing" | "Ready" | "Failed";
 
 export interface KnowledgeSource {

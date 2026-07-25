@@ -10,7 +10,7 @@ import type { AppEnv } from "../types.js";
 
 const createKnowledgeSourceSchema = z.object({
   workspaceId: z.string().min(1),
-  type: z.enum(["Website", "Pdf", "Markdown", "Txt", "Faq"]),
+  type: z.enum(["Website", "Pdf", "Docx", "Markdown", "Txt", "Faq"]),
   origin: z.string().min(1)
 });
 

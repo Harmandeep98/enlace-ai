@@ -16,7 +16,7 @@ export interface SemanticCacheEntry {
   answer: string;
 }
 
-export type KnowledgeSourceType = "Website" | "Pdf" | "Markdown" | "Txt" | "Faq";
+export type KnowledgeSourceType = "Website" | "Pdf" | "Docx" | "Markdown" | "Txt" | "Faq";
 export type KnowledgeSyncStatus = "Pending" | "Processing" | "Ready" | "Failed";
 
 export interface KnowledgeSource {

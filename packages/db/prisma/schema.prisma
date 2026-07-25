@@ -244,6 +244,7 @@ model SemanticCacheEntry {
 enum KnowledgeSourceType {
   Website
   Pdf
+  Docx
   Markdown
   Txt
   Faq
