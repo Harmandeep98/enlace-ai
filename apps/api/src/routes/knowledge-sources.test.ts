@@ -111,4 +111,78 @@ describe("Knowledge source routes", () => {
 
     expect(res.status).toBe(403);
   });
+
+  it("POST /v1/knowledge-sources/upload creates a Pdf source from a real multipart upload", async () => {
+    const { workspace, cookie } = await makeWorkspace();
+    const form = new FormData();
+    form.append("workspaceId", workspace.id);
+    form.append("file", new File([Buffer.from("Fake PDF bytes.")], "handbook.pdf", { type: "application/pdf" }));
+
+    const res = await app.request("/v1/knowledge-sources/upload", { method: "POST", headers: { Cookie: cookie }, body: form });
+
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.source.type).toBe("Pdf");
+    expect(body.source.origin).toBe("handbook.pdf");
+    expect(body.source.syncStatus).toBe("Pending");
+  });
+
+  it("POST /v1/knowledge-sources/upload rejects an unsupported file extension", async () => {
+    const { workspace, cookie } = await makeWorkspace();
+    const form = new FormData();
+    form.append("workspaceId", workspace.id);
+    form.append("file", new File([Buffer.from("not allowed")], "archive.zip", { type: "application/zip" }));
+
+    const res = await app.request("/v1/knowledge-sources/upload", { method: "POST", headers: { Cookie: cookie }, body: form });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("POST /v1/knowledge-sources/upload rejects a missing file", async () => {
+    const { workspace, cookie } = await makeWorkspace();
+    const form = new FormData();
+    form.append("workspaceId", workspace.id);
+
+    const res = await app.request("/v1/knowledge-sources/upload", { method: "POST", headers: { Cookie: cookie }, body: form });
+
+    expect(res.status).toBe(400);
+  });
+
+  it("GET /v1/knowledge-sources/:id returns a source with its chunk count", async () => {
+    const { workspace, cookie } = await makeWorkspace();
+    const createRes = await app.request("/v1/knowledge-sources", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ workspaceId: workspace.id, type: "Website", origin: "https://example.com" })
+    });
+    const { source } = await createRes.json();
+
+    const res = await app.request(`/v1/knowledge-sources/${source.id}?workspaceId=${workspace.id}`, { headers: { Cookie: cookie } });
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.source.id).toBe(source.id);
+    expect(body.source.chunkCount).toBe(0);
+  });
+
+  it("GET /v1/knowledge-sources/:id returns 404 for a source that doesn't exist in that workspace", async () => {
+    const { workspace, cookie } = await makeWorkspace();
+
+    const res = await app.request(`/v1/knowledge-sources/00000000-0000-0000-0000-000000000000?workspaceId=${workspace.id}`, {
+      headers: { Cookie: cookie }
+    });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("GET /v1/knowledge-sources/:id returns 403 for a workspace the caller has no membership in", async () => {
+    const { cookie } = await makeWorkspace();
+    const otherWorkspace = await prisma.workspace.create({ data: { name: "Other Co", slug: `test-${randomUUID()}` } });
+
+    const res = await app.request(`/v1/knowledge-sources/00000000-0000-0000-0000-000000000000?workspaceId=${otherWorkspace.id}`, {
+      headers: { Cookie: cookie }
+    });
+
+    expect(res.status).toBe(403);
+  });
 });
