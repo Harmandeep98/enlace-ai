@@ -1,10 +1,9 @@
-import { createHash } from "node:crypto";
 import * as cheerio from "cheerio";
 import robotsParserImport from "robots-parser";
-import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters";
 import { GeminiEmbeddingAdapter } from "@enlace/ai-gateway";
 import { PrismaDocumentChunkRepository, PrismaKnowledgeSourceRepository } from "@enlace/knowledge";
 import type { KnowledgeSyncStatus } from "@enlace/knowledge";
+import { chunkEmbedAndStore } from "./chunk-and-embed.js";
 
 // robots-parser's own .d.ts ships a conflicting ambient `declare module 'robots-parser'`
 // alongside its real typed export, which confuses TypeScript's NodeNext resolution into
@@ -18,10 +17,6 @@ const robotsParser = robotsParserImport as unknown as (url: string, robotsTxt: s
 // Website Ingestion spec §2 — a safety/cost guard against a runaway crawl on an
 // unexpectedly large site.
 const MAX_PAGES = 500;
-// ~500 tokens per chunk / ~50-token overlap (docs/12-knowledge-architecture.md §3), approximated
-// at ~4 characters per token since RecursiveCharacterTextSplitter operates on character counts.
-const CHUNK_SIZE = 2000;
-const CHUNK_OVERLAP = 200;
 const CRAWLER_USER_AGENT = "EnlaceBot/1.0";
 
 const knowledgeSources = new PrismaKnowledgeSourceRepository();
@@ -94,23 +89,7 @@ export async function ingestPage(workspaceId: string, sourceId: string, pageUrl:
     return { success: false };
   }
 
-  const splitter = new RecursiveCharacterTextSplitter({ chunkSize: CHUNK_SIZE, chunkOverlap: CHUNK_OVERLAP });
-  const chunkTexts = await splitter.splitText(text);
-  if (chunkTexts.length === 0) return { success: false };
-
-  const embeddings = await embeddingAdapter.embedBatch(chunkTexts);
-  await documentChunks.insertMany(
-    workspaceId,
-    sourceId,
-    chunkTexts.map((content, i) => ({
-      content,
-      embedding: embeddings[i] ?? [],
-      tokenCount: Math.ceil(content.length / 4),
-      contentHash: createHash("sha256").update(content).digest("hex")
-    }))
-  );
-
-  return { success: true };
+  return chunkEmbedAndStore(embeddingAdapter, documentChunks, workspaceId, sourceId, text);
 }
 
 export async function finalizeSync(sourceId: string, workspaceId: string, totalPages: number, failedPages: number): Promise<void> {
