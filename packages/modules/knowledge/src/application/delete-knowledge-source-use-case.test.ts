@@ -15,6 +15,10 @@ class FakeKnowledgeSourceRepository implements KnowledgeSourceRepository {
     throw new Error("not used in this test");
   }
 
+  async findById(): Promise<KnowledgeSource | undefined> {
+    throw new Error("not used in this test");
+  }
+
   async delete(): Promise<boolean> {
     return this.existing;
   }

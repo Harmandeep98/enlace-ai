@@ -82,6 +82,30 @@ describe("PrismaDocumentChunkRepository", () => {
     expect(rowsVisibleFromB).toHaveLength(0);
   });
 
+  describe("countBySource", () => {
+    it("counts chunks belonging to a source", async () => {
+      const { workspace, source } = await makeWorkspaceAndSource();
+      const chunks = new PrismaDocumentChunkRepository(new FakeEmbeddingPort(new Map()));
+      await chunks.insertMany(workspace.id, source.id, [
+        { content: "First chunk.", embedding: fillVector(1), tokenCount: 3, contentHash: "hash-1" },
+        { content: "Second chunk.", embedding: fillVector(2), tokenCount: 3, contentHash: "hash-2" }
+      ]);
+
+      const count = await chunks.countBySource(source.id, workspace.id);
+
+      expect(count).toBe(2);
+    });
+
+    it("returns 0 for a source with no chunks", async () => {
+      const { workspace, source } = await makeWorkspaceAndSource();
+      const chunks = new PrismaDocumentChunkRepository(new FakeEmbeddingPort(new Map()));
+
+      const count = await chunks.countBySource(source.id, workspace.id);
+
+      expect(count).toBe(0);
+    });
+  });
+
   describe("findBestMatches", () => {
     it("returns matching chunks from a Ready source", async () => {
       const { workspace, source } = await makeWorkspaceAndSource();

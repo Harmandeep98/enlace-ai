@@ -32,6 +32,7 @@ export interface CreateKnowledgeSourceInput {
 export interface KnowledgeSourceRepository {
   create(input: CreateKnowledgeSourceInput): Promise<KnowledgeSource>;
   listByWorkspace(workspaceId: string): Promise<KnowledgeSource[]>;
+  findById(sourceId: string, workspaceId: string): Promise<KnowledgeSource | undefined>;
   delete(sourceId: string, workspaceId: string): Promise<boolean>;
   updateSyncStatus(
     sourceId: string,
@@ -51,6 +52,7 @@ export interface DocumentChunkInput {
 export interface DocumentChunkRepository {
   insertMany(workspaceId: string, sourceId: string, chunks: DocumentChunkInput[]): Promise<void>;
   findBestMatches(workspaceId: string, message: string, k: number): Promise<{ content: string }[]>;
+  countBySource(sourceId: string, workspaceId: string): Promise<number>;
 }
 
 // Consumer-defined structural port (same pattern as FaqCachePort/SemanticCachePort in

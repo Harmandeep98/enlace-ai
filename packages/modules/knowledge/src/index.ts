@@ -37,3 +37,6 @@ export type { DeleteFaqInput } from "./application/delete-faq-use-case.js";
 
 export type { FileStoragePort } from "./application/ports.js";
 export { S3FileStorageAdapter } from "./infrastructure/s3-file-storage-adapter.js";
+
+export { GetKnowledgeSourceUseCase } from "./application/get-knowledge-source-use-case.js";
+export type { GetKnowledgeSourceInput, KnowledgeSourceDetail } from "./application/get-knowledge-source-use-case.js";

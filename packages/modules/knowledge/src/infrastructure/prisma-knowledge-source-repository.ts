@@ -42,6 +42,11 @@ export class PrismaKnowledgeSourceRepository implements KnowledgeSourceRepositor
     return rows.map(toKnowledgeSource);
   }
 
+  async findById(sourceId: string, workspaceId: string): Promise<KnowledgeSource | undefined> {
+    const row = await this.withTenant(workspaceId, (tx) => tx.knowledgeSource.findUnique({ where: { id: sourceId } }));
+    return row ? toKnowledgeSource(row) : undefined;
+  }
+
   async delete(sourceId: string, workspaceId: string): Promise<boolean> {
     const result = await this.withTenant(workspaceId, (tx) =>
       tx.knowledgeSource.deleteMany({ where: { id: sourceId, workspaceId } })

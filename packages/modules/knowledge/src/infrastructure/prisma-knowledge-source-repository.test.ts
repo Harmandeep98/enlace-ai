@@ -99,4 +99,21 @@ describe("PrismaKnowledgeSourceRepository", () => {
     const stillThere = await repo.listByWorkspace(workspaceA.id);
     expect(stillThere.map((s) => s.id)).toEqual([sourceA.id]);
   });
+
+  it("findById returns the source when it exists in that workspace", async () => {
+    const workspace = await makeWorkspace();
+    const created = await repo.create({ workspaceId: workspace.id, type: "Website", origin: "https://example.com" });
+
+    const found = await repo.findById(created.id, workspace.id);
+
+    expect(found?.id).toBe(created.id);
+  });
+
+  it("findById returns undefined for a source that doesn't exist in that workspace", async () => {
+    const workspace = await makeWorkspace();
+
+    const found = await repo.findById(randomUUID(), workspace.id);
+
+    expect(found).toBeUndefined();
+  });
 });

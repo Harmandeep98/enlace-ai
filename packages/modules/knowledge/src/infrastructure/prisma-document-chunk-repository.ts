@@ -58,4 +58,8 @@ export class PrismaDocumentChunkRepository implements DocumentChunkRepository {
 
     return rows.filter((row) => row.similarity >= SIMILARITY_THRESHOLD).map((row) => ({ content: row.content }));
   }
+
+  async countBySource(sourceId: string, workspaceId: string): Promise<number> {
+    return this.withTenant(workspaceId, (tx) => tx.documentChunk.count({ where: { sourceId, workspaceId } }));
+  }
 }
