@@ -27,13 +27,16 @@ import {
   CreateKnowledgeSourceUseCase,
   DeleteFaqUseCase,
   DeleteKnowledgeSourceUseCase,
+  GetKnowledgeSourceUseCase,
   ListFaqsUseCase,
   ListKnowledgeSourcesUseCase,
   PrismaDocumentChunkRepository,
   PrismaFaqRepository,
   PrismaKnowledgeSourceRepository,
   PrismaSemanticCacheRepository,
-  TemporalIngestionTrigger
+  S3FileStorageAdapter,
+  TemporalIngestionTrigger,
+  UploadKnowledgeSourceUseCase
 } from "@enlace/knowledge";
 import {
   AddMessageUseCase,
@@ -76,6 +79,7 @@ function buildContainer() {
   const faqRepository = new PrismaFaqRepository();
   const knowledgeSourceRepository = new PrismaKnowledgeSourceRepository();
   const ingestionTrigger = new TemporalIngestionTrigger();
+  const fileStorage = new S3FileStorageAdapter();
   const embeddingAdapter = new GeminiEmbeddingAdapter();
   const semanticCacheRepository = new PrismaSemanticCacheRepository(embeddingAdapter);
   const providerConfigRepository = new PrismaProviderConfigRepository();
@@ -120,6 +124,8 @@ function buildContainer() {
     listKnowledgeSourcesUseCase: new ListKnowledgeSourcesUseCase(knowledgeSourceRepository),
     deleteKnowledgeSourceUseCase: new DeleteKnowledgeSourceUseCase(knowledgeSourceRepository),
     deleteFaqUseCase: new DeleteFaqUseCase(faqRepository),
+    uploadKnowledgeSourceUseCase: new UploadKnowledgeSourceUseCase(knowledgeSourceRepository, fileStorage, ingestionTrigger),
+    getKnowledgeSourceUseCase: new GetKnowledgeSourceUseCase(knowledgeSourceRepository, documentChunkRepository),
     createIntegrationConnectionUseCase,
     verifyWorkspaceMembershipUseCase,
     incomingMessageUseCase: new IncomingMessageUseCase(
