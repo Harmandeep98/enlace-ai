@@ -1,6 +1,6 @@
 import { signUpSchema } from "@enlace/contracts";
 import type { SignUpRequest } from "@enlace/contracts";
-import type { Conversation, ConversationStatus, FaqEntry, KnowledgeSource, Message } from "@/lib/types";
+import type { Conversation, ConversationStatus, FaqEntry, KnowledgeSource, KnowledgeSourceDetail, Message } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -121,6 +121,40 @@ export async function createKnowledgeSource(
   if (!res.ok) {
     const body = await res.json();
     return { ok: false, message: body.error?.message ?? "Could not add that source." };
+  }
+  const body = await res.json();
+  return { ok: true, source: body.source };
+}
+
+export async function uploadKnowledgeSource(
+  workspaceId: string,
+  file: File
+): Promise<{ ok: true; source: KnowledgeSource } | { ok: false; message: string }> {
+  const form = new FormData();
+  form.append("workspaceId", workspaceId);
+  form.append("file", file);
+
+  const res = await fetch(`${API_URL}/v1/knowledge-sources/upload`, {
+    method: "POST",
+    credentials: "include",
+    body: form
+  });
+  if (!res.ok) {
+    const body = await res.json();
+    return { ok: false, message: body.error?.message ?? "Could not upload that file." };
+  }
+  const body = await res.json();
+  return { ok: true, source: body.source };
+}
+
+export async function getKnowledgeSource(
+  sourceId: string,
+  workspaceId: string
+): Promise<{ ok: true; source: KnowledgeSourceDetail } | { ok: false; message: string }> {
+  const res = await fetch(`${API_URL}/v1/knowledge-sources/${sourceId}?workspaceId=${workspaceId}`, { credentials: "include" });
+  if (!res.ok) {
+    const body = await res.json();
+    return { ok: false, message: body.error?.message ?? "Could not load this knowledge source." };
   }
   const body = await res.json();
   return { ok: true, source: body.source };

@@ -41,6 +41,10 @@ export interface KnowledgeSource {
   lastSyncedAt: string | null;
 }
 
+export interface KnowledgeSourceDetail extends KnowledgeSource {
+  chunkCount: number;
+}
+
 export interface FaqEntry {
   id: string;
   workspaceId: string;
