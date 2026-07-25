@@ -60,6 +60,7 @@ export interface DocumentChunkRepository {
 // directly, keeping the application layer free of infrastructure imports.
 export interface IngestionTriggerPort {
   startWebsiteSync(sourceId: string, workspaceId: string, origin: string): Promise<void>;
+  startFileSync(sourceId: string, workspaceId: string, storageRef: string, fileType: KnowledgeSourceType): Promise<void>;
 }
 
 // Consumer-defined structural port (same pattern as IngestionTriggerPort above) — the file

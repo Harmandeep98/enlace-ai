@@ -4,5 +4,6 @@
 export const WORKFLOW_NAMES = {
   HEALTH_CHECK: "healthCheckWorkflow",
   KNOWLEDGE_SYNC: "knowledgeSyncWorkflow",
+  FILE_SYNC: "fileSyncWorkflow",
   ZENDESK_SYNC: "zendeskSyncWorkflow"
 } as const;

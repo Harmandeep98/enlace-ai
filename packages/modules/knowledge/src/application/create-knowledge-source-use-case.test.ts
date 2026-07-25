@@ -35,6 +35,9 @@ class FakeIngestionTriggerPort implements IngestionTriggerPort {
   async startWebsiteSync(sourceId: string, workspaceId: string, origin: string): Promise<void> {
     this.startedFor.push({ sourceId, workspaceId, origin });
   }
+  async startFileSync(): Promise<void> {
+    throw new Error("not used in this test");
+  }
 }
 
 describe("CreateKnowledgeSourceUseCase", () => {

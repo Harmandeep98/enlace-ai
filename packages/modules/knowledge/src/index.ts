@@ -40,3 +40,6 @@ export { S3FileStorageAdapter } from "./infrastructure/s3-file-storage-adapter.j
 
 export { GetKnowledgeSourceUseCase } from "./application/get-knowledge-source-use-case.js";
 export type { GetKnowledgeSourceInput, KnowledgeSourceDetail } from "./application/get-knowledge-source-use-case.js";
+
+export { UploadKnowledgeSourceUseCase } from "./application/upload-knowledge-source-use-case.js";
+export type { UploadKnowledgeSourceInput } from "./application/upload-knowledge-source-use-case.js";
