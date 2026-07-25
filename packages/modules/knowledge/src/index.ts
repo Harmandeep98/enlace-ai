@@ -34,3 +34,6 @@ export { DeleteKnowledgeSourceUseCase } from "./application/delete-knowledge-sou
 export type { DeleteKnowledgeSourceInput } from "./application/delete-knowledge-source-use-case.js";
 export { DeleteFaqUseCase } from "./application/delete-faq-use-case.js";
 export type { DeleteFaqInput } from "./application/delete-faq-use-case.js";
+
+export type { FileStoragePort } from "./application/ports.js";
+export { S3FileStorageAdapter } from "./infrastructure/s3-file-storage-adapter.js";

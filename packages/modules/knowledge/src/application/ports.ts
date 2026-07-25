@@ -59,3 +59,10 @@ export interface DocumentChunkRepository {
 export interface IngestionTriggerPort {
   startWebsiteSync(sourceId: string, workspaceId: string, origin: string): Promise<void>;
 }
+
+// Consumer-defined structural port (same pattern as IngestionTriggerPort above) — the file
+// upload use case depends on this, never on @aws-sdk/client-s3 directly.
+export interface FileStoragePort {
+  upload(workspaceId: string, sourceId: string, filename: string, content: Buffer, mimeType: string): Promise<string>;
+  download(ref: string): Promise<Buffer>;
+}
