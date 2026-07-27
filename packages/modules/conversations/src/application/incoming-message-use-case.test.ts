@@ -255,7 +255,7 @@ describe("IncomingMessageUseCase", () => {
 
       expect(result.aiReply?.content).toBe("We're open 9am to 5pm.");
       expect(result.aiReply?.resolutionPath).toBe("Retrieval");
-      expect(retrieval.calls).toEqual([{ workspaceId: "workspace-1", message: "What are your business hours?", k: 3 }]);
+      expect(retrieval.calls).toEqual([{ workspaceId: "workspace-1", message: "What are your business hours?", k: 5 }]);
       expect(completion.calls[0]?.context).toEqual([{ content: "Our business hours are 9am to 5pm." }]);
       expect(completion.calls[0]?.tier).toBe("small");
       expect(completion.calls[0]?.messages).toEqual([{ role: "user", content: "What are your business hours?" }]);

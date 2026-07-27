@@ -30,7 +30,7 @@ import type {
 } from "./ports.js";
 
 const MESSAGE_HISTORY_WINDOW = 10;
-const RETRIEVAL_K = 3;
+const RETRIEVAL_K = 5;
 // Mirrors @enlace/ai-gateway's ESCALATION_CONFIDENCE_THRESHOLD (0.6) — duplicated here since
 // Conversations must not import @enlace/ai-gateway directly (consumer-defined structural ports).
 const LOW_CONFIDENCE_THRESHOLD = 0.6;

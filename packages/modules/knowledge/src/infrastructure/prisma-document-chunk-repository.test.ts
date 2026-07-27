@@ -163,5 +163,34 @@ describe("PrismaDocumentChunkRepository", () => {
 
       expect(matches).toEqual([]);
     });
+
+    it("prefers diverse content over near-duplicate chunks when picking the top k (MMR)", async () => {
+      const { workspace, source } = await makeWorkspaceAndSource();
+      await sources.updateSyncStatus(source.id, workspace.id, "Ready", new Date());
+
+      // Two "duplicate" chunks share fillVector(1)'s direction plus a small, near-identical
+      // flavor along an orthogonal axis (alternatingVector) — highly relevant to the query and
+      // near-identical to each other. The "distinct" chunk shares the same relevant direction
+      // but with an opposite flavor — still relevant, but genuinely different content, and far
+      // from the duplicates in vector space. Plain top-k similarity picks both duplicates over
+      // the distinct chunk; MMR should pick the distinct one instead of the second duplicate.
+      function blend(flavorCoefficient: number): number[] {
+        const base = fillVector(1);
+        const flavor = alternatingVector();
+        return base.map((v, i) => v + flavor[i]! * flavorCoefficient);
+      }
+
+      const embeddings = new FakeEmbeddingPort(new Map([["What is your policy?", fillVector(1)]]));
+      const chunks = new PrismaDocumentChunkRepository(embeddings);
+      await chunks.insertMany(workspace.id, source.id, [
+        { content: "Duplicate A: 30 day returns.", embedding: blend(0.3), tokenCount: 5, contentHash: "hash-a" },
+        { content: "Duplicate B: 30 day returns, restated.", embedding: blend(0.32), tokenCount: 5, contentHash: "hash-b" },
+        { content: "Distinct: shipping takes 3-5 business days.", embedding: blend(-0.9), tokenCount: 5, contentHash: "hash-c" }
+      ]);
+
+      const matches = await chunks.findBestMatches(workspace.id, "What is your policy?", 2);
+
+      expect(matches.map((m) => m.content)).toContain("Distinct: shipping takes 3-5 business days.");
+    });
   });
 });
