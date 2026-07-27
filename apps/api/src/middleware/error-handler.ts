@@ -1,6 +1,7 @@
 // docs/07-api-design.md §5 — one error-mapping table, not per-route ad hoc handling.
 import type { Context } from "hono";
 import { DomainError } from "@enlace/shared";
+import { ChannelNotFoundError, InvalidDomainError, OriginNotAllowedError } from "@enlace/channels";
 import { WorkspaceAccessDeniedError, WorkspaceSlugTakenError } from "@enlace/identity";
 import { ConversationNotFoundError, ConversationNotOpenError, EscalationReasonRequiredError } from "@enlace/conversations";
 import { FaqNotFoundError, KnowledgeSourceNotFoundError } from "@enlace/knowledge";
@@ -23,7 +24,10 @@ const errorStatusMap = new Map<new (...args: never[]) => DomainError, number>([
   [ProviderKeyValidationFailedError, 400],
   [ProviderConfigNotFoundError, 404],
   [KnowledgeSourceNotFoundError, 404],
-  [FaqNotFoundError, 404]
+  [FaqNotFoundError, 404],
+  [ChannelNotFoundError, 403],
+  [OriginNotAllowedError, 403],
+  [InvalidDomainError, 400]
 ]);
 
 export function mapDomainErrorToResponse(error: unknown, c: Context<AppEnv>) {

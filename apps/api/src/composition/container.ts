@@ -7,7 +7,7 @@ import {
   SignUpUseCase,
   VerifyWorkspaceMembershipUseCase
 } from "@enlace/identity";
-import { PrismaChannelRepository } from "@enlace/channels";
+import { GetChannelUseCase, PrismaChannelRepository, UpdateAllowedDomainsUseCase, VerifyWidgetOriginUseCase } from "@enlace/channels";
 import {
   CheckCostCeilingUseCase,
   ConfigureProviderUseCase,
@@ -44,6 +44,7 @@ import {
   EscalateConversationUseCase,
   GetConversationUseCase,
   IncomingMessageUseCase,
+  IncomingWidgetMessageUseCase,
   ListConversationsUseCase,
   PrismaConversationRepository,
   StartConversationUseCase
@@ -126,6 +127,17 @@ function buildContainer() {
     deleteFaqUseCase: new DeleteFaqUseCase(faqRepository),
     uploadKnowledgeSourceUseCase: new UploadKnowledgeSourceUseCase(knowledgeSourceRepository, fileStorage, ingestionTrigger),
     getKnowledgeSourceUseCase: new GetKnowledgeSourceUseCase(knowledgeSourceRepository, documentChunkRepository),
+    verifyWidgetOriginUseCase: new VerifyWidgetOriginUseCase(channelRepository),
+    getChannelUseCase: new GetChannelUseCase(channelRepository),
+    updateAllowedDomainsUseCase: new UpdateAllowedDomainsUseCase(channelRepository),
+    incomingWidgetMessageUseCase: new IncomingWidgetMessageUseCase(
+      conversationRepository,
+      faqRepository,
+      semanticCacheRepository,
+      documentChunkRepository,
+      completionAdapter,
+      escalateConversationUseCase
+    ),
     createIntegrationConnectionUseCase,
     verifyWorkspaceMembershipUseCase,
     incomingMessageUseCase: new IncomingMessageUseCase(
