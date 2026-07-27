@@ -3,7 +3,9 @@ import type { Conversation, Message } from "../domain/entities.js";
 
 export type ConversationEvent =
   | { type: "message"; conversationId: string; message: Message }
-  | { type: "status"; conversationId: string; conversation: Conversation };
+  | { type: "status"; conversationId: string; conversation: Conversation }
+  | { type: "reply-chunk"; conversationId: string; delta: string }
+  | { type: "reply-done"; conversationId: string; message: Message };
 
 export class ConversationEventBus {
   // Each workspaceId is its own event name on this single shared emitter — unrelated to

@@ -150,6 +150,10 @@ class FakeCompletionPort implements CompletionPort {
     }
     return { content: this.behavior.content, confidence: this.behavior.confidence ?? { score: 0.9 } };
   }
+
+  async *completeStream(): AsyncIterable<{ contentDelta: string; done: boolean; result?: { content: string; confidence: { score: number } } }> {
+    throw new Error("not used in this test");
+  }
 }
 
 class FakeToolInvokerPort implements ToolInvokerPort {

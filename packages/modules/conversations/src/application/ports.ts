@@ -65,9 +65,12 @@ export interface ToolExchangeTurn {
 }
 
 // Consumer-defined structural port — Conversations has no dependency on @enlace/ai-gateway;
-// GoogleCompletionAdapter satisfies this structurally (its real CompletionResult has more
-// fields than {content: string}, but that's fine — a wider return type is always assignable
-// to a narrower one this consumer actually needs).
+// GoogleCompletionAdapter satisfies this structurally (its real CompletionChunk/CompletionResult
+// have more fields than these, but that's fine — a wider return type is always assignable to a
+// narrower one this consumer actually needs). Unlike complete(), this has no tools/
+// priorToolExchanges params — completeStream() genuinely doesn't support tool-calling
+// (docs/superpowers/specs/2026-07-27-widget-public-api-design.md §2), a known, accepted gap for
+// widget conversations specifically.
 export interface CompletionPort {
   complete(request: {
     workspaceId: string;
@@ -77,6 +80,13 @@ export interface CompletionPort {
     tools?: { name: string; description: string; parameters: Record<string, unknown> }[];
     priorToolExchanges?: ToolExchangeTurn[];
   }): Promise<{ content: string; confidence: { score: number }; toolCalls?: ToolCall[] }>;
+
+  completeStream(request: {
+    workspaceId: string;
+    messages: { role: "user" | "assistant"; content: string }[];
+    context: { content: string }[];
+    tier: "small" | "large";
+  }): AsyncIterable<{ contentDelta: string; done: boolean; result?: { content: string; confidence: { score: number } } }>;
 }
 
 // Consumer-defined structural port, same pattern as FaqCachePort/CompletionPort — Conversations
