@@ -8,6 +8,7 @@ import { faqRoutes } from "./routes/faqs.js";
 import { knowledgeSourceRoutes } from "./routes/knowledge-sources.js";
 import { aiGatewayRoutes } from "./routes/ai-gateway.js";
 import { integrationRoutes } from "./routes/integrations.js";
+import { channelRoutes } from "./routes/channels.js";
 import type { AppEnv } from "./types.js";
 
 const PUBLIC_PATHS = ["/health", "/v1/signup"];
@@ -44,5 +45,6 @@ export function buildApp() {
   app.route("/", knowledgeSourceRoutes);
   app.route("/", aiGatewayRoutes);
   app.route("/", integrationRoutes);
+  app.route("/", channelRoutes);
   return app;
 }
