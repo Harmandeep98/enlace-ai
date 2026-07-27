@@ -173,12 +173,14 @@ model Membership {
 // --- Channels & Conversations domain (docs/05-domain-model.md §4-5, docs/06-database-design.md §2) ---
 
 model ChannelConnection {
-  id            String         @id @default(uuid())
-  workspaceId   String
-  workspace     Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  type          ChannelType
-  createdAt     DateTime       @default(now())
-  conversations Conversation[]
+  id             String         @id @default(uuid())
+  workspaceId    String
+  workspace      Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  type           ChannelType
+  publicKey      String         @unique @default(dbgenerated("('wk_live_' || replace(gen_random_uuid()::text, '-', ''))"))
+  allowedDomains String[]       @default([])
+  createdAt      DateTime       @default(now())
+  conversations  Conversation[]
 
   @@index([workspaceId])
   @@map("channel_connections")

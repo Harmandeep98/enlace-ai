@@ -11,7 +11,9 @@
     "lint": "eslint src",
     "test": "dotenv -e ../../../.env -- vitest run"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@enlace/shared": "workspace:*"
+  },
   "devDependencies": {
     "@enlace/config": "workspace:*",
     "@enlace/db": "workspace:*",

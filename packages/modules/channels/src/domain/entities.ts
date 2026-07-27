@@ -5,4 +5,6 @@ export interface ChannelConnection {
   id: string;
   workspaceId: string;
   type: ChannelType;
+  publicKey: string;
+  allowedDomains: string[];
 }
