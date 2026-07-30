@@ -9,6 +9,7 @@ import { knowledgeSourceRoutes } from "./routes/knowledge-sources.js";
 import { aiGatewayRoutes } from "./routes/ai-gateway.js";
 import { integrationRoutes } from "./routes/integrations.js";
 import { channelRoutes } from "./routes/channels.js";
+import { widgetRoutes } from "./routes/widget.js";
 import type { AppEnv } from "./types.js";
 
 const PUBLIC_PATHS = ["/health", "/v1/signup"];
@@ -27,7 +28,7 @@ export function buildApp() {
     })
   );
   app.use("*", async (c, next) => {
-    if (PUBLIC_PATHS.includes(c.req.path) || c.req.path.startsWith("/api/auth/")) {
+    if (PUBLIC_PATHS.includes(c.req.path) || c.req.path.startsWith("/api/auth/") || c.req.path.startsWith("/v1/widget/")) {
       return next();
     }
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
@@ -46,5 +47,6 @@ export function buildApp() {
   app.route("/", aiGatewayRoutes);
   app.route("/", integrationRoutes);
   app.route("/", channelRoutes);
+  app.route("/", widgetRoutes);
   return app;
 }
