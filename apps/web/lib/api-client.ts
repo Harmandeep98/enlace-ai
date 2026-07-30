@@ -1,6 +1,6 @@
 import { signUpSchema } from "@enlace/contracts";
 import type { SignUpRequest } from "@enlace/contracts";
-import type { Conversation, ConversationStatus, FaqEntry, KnowledgeSource, KnowledgeSourceDetail, Message } from "@/lib/types";
+import type { ChannelConnection, Conversation, ConversationStatus, FaqEntry, KnowledgeSource, KnowledgeSourceDetail, Message } from "@/lib/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -214,4 +214,34 @@ export async function deleteFaq(faqId: string, workspaceId: string): Promise<{ o
     return { ok: false, message: body.error?.message ?? "Could not delete that FAQ." };
   }
   return { ok: true };
+}
+
+export async function getChannel(
+  workspaceId: string
+): Promise<{ ok: true; channel: ChannelConnection } | { ok: false; message: string }> {
+  const res = await fetch(`${API_URL}/v1/channels?workspaceId=${workspaceId}`, { credentials: "include" });
+  if (!res.ok) {
+    const body = await res.json();
+    return { ok: false, message: body.error?.message ?? "Could not load channel info." };
+  }
+  const body = await res.json();
+  return { ok: true, channel: body.channel };
+}
+
+export async function updateAllowedDomains(
+  workspaceId: string,
+  domains: string[]
+): Promise<{ ok: true; channel: ChannelConnection } | { ok: false; message: string }> {
+  const res = await fetch(`${API_URL}/v1/channels/allowed-domains`, {
+    method: "PATCH",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ workspaceId, domains })
+  });
+  if (!res.ok) {
+    const body = await res.json();
+    return { ok: false, message: body.error?.message ?? "Could not update allowed domains." };
+  }
+  const body = await res.json();
+  return { ok: true, channel: body.channel };
 }

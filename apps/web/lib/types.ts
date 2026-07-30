@@ -51,3 +51,11 @@ export interface FaqEntry {
   question: string;
   answer: string;
 }
+
+export interface ChannelConnection {
+  id: string;
+  workspaceId: string;
+  type: "Widget";
+  publicKey: string;
+  allowedDomains: string[];
+}
